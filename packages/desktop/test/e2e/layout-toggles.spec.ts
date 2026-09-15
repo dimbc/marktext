@@ -93,7 +93,8 @@ test.describe('Layout panel toggles', () => {
     // Open search panel and then collapse it back to the icon strip by
     // clicking the search icon. We use a locator-based click (not a DOM
     // .click()) so Playwright handles focus/activation correctly.
-    const searchIcon = page.locator('.side-bar .left-column > ul').first().locator('li').nth(1)
+    // Index 0 is the file-actions overlay icon; search follows files/toc order.
+    const searchIcon = page.locator('.side-bar .left-column > ul').first().locator('li').nth(2)
 
     // Step 1: ensure rightColumn='search' (sidebar width ≥ 220 with the
     // search panel mounted at `.side-bar-search`).

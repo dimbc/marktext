@@ -1,5 +1,6 @@
 import {
   Folder as FilesIcon,
+  Document as FileActionsIcon,
   Search as SearchIcon,
   Memo as TocIcon,
   Setting as SettingIcon
@@ -12,7 +13,16 @@ export interface SideBarIconEntry {
   icon: unknown
 }
 
+/** Not a layout column: clicking this entry opens the file-actions overlay
+ *  instead of swapping the right panel (see `openSideBarFileMenu`). */
+export const FILE_ACTIONS_ICON_ID = 'fileActions'
+
 export const sideBarIcons: SideBarIconEntry[] = [
+  {
+    id: FILE_ACTIONS_ICON_ID,
+    name: () => t('menu.file.file'),
+    icon: FileActionsIcon
+  },
   {
     id: 'files',
     name: () => t('sideBar.icons.files'),

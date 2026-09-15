@@ -11,7 +11,8 @@
           v-for="(c, index) of sideBarIcons"
           :key="index"
           :class="{ active: c.id === rightColumn }"
-          @click="handleLeftIconClick(c.id)"
+          :data-mt-ctx-trigger="c.id === FILE_ACTIONS_ICON_ID ? '' : null"
+          @click="handleLeftIconClick(c.id, $event)"
         >
           <component :is="c.icon" />
         </li>
@@ -53,10 +54,11 @@ import { useLayoutStore } from '@/store/layout'
 import { useProjectStore } from '@/store/project'
 import { useEditorStore } from '@/store/editor'
 
-import { sideBarIcons, sideBarBottomIcons } from './help'
+import { sideBarIcons, sideBarBottomIcons, FILE_ACTIONS_ICON_ID } from './help'
 import Tree from './tree.vue'
 import SideBarSearch from './search.vue'
 import Toc from './toc.vue'
+import { openSideBarFileMenu } from '@/contextMenu/sideBarFileMenu'
 import { storeToRefs } from 'pinia'
 import type { TabDescriptor } from './types'
 
@@ -114,7 +116,16 @@ onMounted(() => {
   })
 })
 
-const handleLeftIconClick = (name: string): void => {
+const handleLeftIconClick = (name: string, event?: MouseEvent): void => {
+  // The leading icon is a file-actions overlay, not a layout column.
+  if (name === FILE_ACTIONS_ICON_ID) {
+    const target = event?.currentTarget as HTMLElement | undefined
+    if (target) {
+      openSideBarFileMenu(target.getBoundingClientRect())
+    }
+    return
+  }
+
   if (rightColumn.value === name) {
     // Capture the expanded width BEFORE collapsing: once rightColumn is '',
     // finalSideBarWidth evaluates to the 45px icon strip and would overwrite

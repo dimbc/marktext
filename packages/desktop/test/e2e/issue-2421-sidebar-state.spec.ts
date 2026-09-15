@@ -9,8 +9,9 @@ import { launchWithMarkdown } from './helpers'
 // so collapsing the sidebar destroyed the tree and reset them on re-expand.
 // These drive the real built app.
 
+// Index 0 is the file-actions overlay icon, so the files column comes next.
 const filesIcon = (page: Page) =>
-  page.locator('.side-bar .left-column > ul').first().locator('li').nth(0)
+  page.locator('.side-bar .left-column > ul').first().locator('li').nth(1)
 
 const sideBarWidth = (page: Page) =>
   page.evaluate(() => {
