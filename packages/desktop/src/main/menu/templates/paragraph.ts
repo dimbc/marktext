@@ -112,24 +112,6 @@ export default function(keybindings: Keybindings): MenuItemConstructorOptions {
         }
       },
       {
-        id: 'mathBlockMenuItem',
-        label: t('menu.paragraph.mathBlock'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('paragraph.math-formula') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.mathFormula(focusedWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        id: 'htmlBlockMenuItem',
-        label: t('menu.paragraph.htmlBlock'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('paragraph.html-block') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.htmlBlock(focusedWindow as BrowserWindow | undefined)
-        }
-      },
-      {
         type: 'separator'
       },
       {
@@ -160,46 +142,68 @@ export default function(keybindings: Keybindings): MenuItemConstructorOptions {
         }
       },
       {
-        type: 'separator'
-      },
-      {
-        id: 'looseListItemMenuItem',
-        label: t('menu.paragraph.looseListItem'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('paragraph.loose-list-item') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.looseListItem(focusedWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        type: 'separator'
-      },
-      {
-        id: 'paragraphMenuItem',
-        label: t('menu.paragraph.paragraph'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('paragraph.paragraph') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.paragraph(focusedWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        id: 'horizontalLineMenuItem',
-        label: t('menu.paragraph.horizontalRule'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('paragraph.horizontal-line') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.horizontalLine(focusedWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        id: 'frontMatterMenuItem',
-        label: t('menu.paragraph.frontMatter'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('paragraph.front-matter') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.frontMatter(focusedWindow as BrowserWindow | undefined)
-        }
+        // Rarely used block types and container toggles fold into one submenu
+        // so the Paragraph menu opens at a readable height.
+        label: t('menu.paragraph.moreBlocks'),
+        submenu: [
+          {
+            id: 'looseListItemMenuItem',
+            label: t('menu.paragraph.looseListItem'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('paragraph.loose-list-item') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.looseListItem(focusedWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            type: 'separator'
+          },
+          {
+            id: 'mathBlockMenuItem',
+            label: t('menu.paragraph.mathBlock'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('paragraph.math-formula') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.mathFormula(focusedWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            id: 'htmlBlockMenuItem',
+            label: t('menu.paragraph.htmlBlock'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('paragraph.html-block') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.htmlBlock(focusedWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            id: 'paragraphMenuItem',
+            label: t('menu.paragraph.paragraph'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('paragraph.paragraph') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.paragraph(focusedWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            id: 'horizontalLineMenuItem',
+            label: t('menu.paragraph.horizontalRule'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('paragraph.horizontal-line') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.horizontalLine(focusedWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            id: 'frontMatterMenuItem',
+            label: t('menu.paragraph.frontMatter'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('paragraph.front-matter') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.frontMatter(focusedWindow as BrowserWindow | undefined)
+            }
+          }
+        ]
       }
     ]
   }

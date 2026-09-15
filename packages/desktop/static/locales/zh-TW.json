@@ -40,9 +40,11 @@
       "copyAsHtml": "複製為 HTML",
       "pasteAsPlainText": "貼上為純文字",
       "selectAll": "全選",
+      "paragraphOperations": "段落操作",
       "duplicate": "複製",
       "createParagraph": "建立段落",
       "deleteParagraph": "刪除段落",
+      "findReplace": "尋找與取代",
       "find": "尋找",
       "replace": "取代",
       "findNext": "尋找下一個",
@@ -74,7 +76,8 @@
       "taskList": "任務清單",
       "looseListItem": "鬆散清單項目",
       "horizontalRule": "水平線",
-      "frontMatter": "前置資料"
+      "frontMatter": "前置資料",
+      "moreBlocks": "更多區塊"
     },
     "window": {
       "title": "視窗",
@@ -96,6 +99,7 @@
       "followUs": "關注我們",
       "support": "支持 MarkText",
       "license": "授權條款",
+      "onlineResources": "線上資源",
       "about": "關於",
       "checkUpdates": "檢查更新"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "行內程式碼",
       "inlineMath": "行內數學",
       "hyperlink": "超連結",
-      "clearFormat": "清除格式"
+      "clearFormat": "清除格式",
+      "moreStyles": "更多樣式"
     },
     "theme": {
       "theme": "主題(&T)",

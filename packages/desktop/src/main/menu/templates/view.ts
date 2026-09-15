@@ -3,7 +3,12 @@ import * as actions from '../actions/view'
 import { t } from '../../i18n'
 import type Keybindings from '../../keyboard/shortcutHandler'
 
-export default function(keybindings: Keybindings): MenuItemConstructorOptions {
+export default function(
+  keybindings: Keybindings,
+  // Whole menus folded into "View" (Window / Theme on Windows and Linux) to keep
+  // the menu bar short; macOS keeps them at the top level, see templates/index.ts.
+  extraGroups: MenuItemConstructorOptions[] = []
+): MenuItemConstructorOptions {
   const submenu: MenuItemConstructorOptions[] = [
     {
       label: t('menu.view.commandPalette'),
@@ -88,6 +93,10 @@ export default function(keybindings: Keybindings): MenuItemConstructorOptions {
   const viewMenu: MenuItemConstructorOptions = {
     label: t('menu.view.view'),
     submenu
+  }
+
+  for (const group of extraGroups) {
+    submenu.push({ type: 'separator' }, group)
   }
 
   if (global.MARKTEXT_DEBUG) {

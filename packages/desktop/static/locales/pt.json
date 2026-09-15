@@ -40,9 +40,11 @@
       "copyAsHtml": "Copiar como HTML",
       "pasteAsPlainText": "Colar como Texto Simples",
       "selectAll": "Selecionar Tudo",
+      "paragraphOperations": "Operações de parágrafo",
       "duplicate": "Duplicar",
       "createParagraph": "Criar Parágrafo",
       "deleteParagraph": "Excluir Parágrafo",
+      "findReplace": "Localizar e substituir",
       "find": "Localizar",
       "replace": "Substituir",
       "findNext": "Localizar Próximo",
@@ -74,7 +76,8 @@
       "taskList": "Lista de Tarefas",
       "looseListItem": "Item de Lista Solta",
       "horizontalRule": "Linha Horizontal",
-      "frontMatter": "Front Matter"
+      "frontMatter": "Front Matter",
+      "moreBlocks": "Mais blocos"
     },
     "window": {
       "title": "Janela",
@@ -96,6 +99,7 @@
       "followUs": "Siga-nos",
       "support": "Apoiar MarkText",
       "license": "Licença",
+      "onlineResources": "Recursos online",
       "about": "Sobre",
       "checkUpdates": "Verificar Atualizações"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "Código Inline",
       "inlineMath": "Matemática Inline",
       "hyperlink": "Hiperlink",
-      "clearFormat": "Limpar Formatação"
+      "clearFormat": "Limpar Formatação",
+      "moreStyles": "Mais estilos"
     },
     "theme": {
       "theme": "&Tema",

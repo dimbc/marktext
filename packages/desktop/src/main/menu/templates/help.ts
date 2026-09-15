@@ -48,46 +48,53 @@ export default function(): MenuItemConstructorOptions {
       type: 'separator'
     },
     {
-      label: t('menu.help.followUs'),
-      click() {
-        shell.openExternal('https://twitter.com/marktextapp')
-      }
-    },
-    {
-      label: t('menu.help.support'),
-      click() {
-        shell.openExternal('https://github.com/sponsors/marktext')
-      }
-    },
-    {
-      type: 'separator'
-    },
-    {
-      label: t('menu.help.askQuestion'),
-      click() {
-        shell.openExternal('https://github.com/marktext/marktext/discussions')
-      }
-    },
-    {
-      label: t('menu.help.reportBug'),
-      click() {
-        shell.openExternal('https://github.com/marktext/marktext/issues')
-      }
-    },
-    {
-      label: t('menu.help.viewSource'),
-      click() {
-        shell.openExternal('https://github.com/marktext/marktext')
-      }
-    },
-    {
-      type: 'separator'
-    },
-    {
-      label: t('menu.help.license'),
-      click() {
-        shell.openExternal('https://github.com/marktext/marktext/blob/develop/LICENSE')
-      }
+      // Every external link folds into one submenu so the Help menu shows the
+      // actionable entries (reference, changelog, updates, about) up front.
+      label: t('menu.help.onlineResources'),
+      submenu: [
+        {
+          label: t('menu.help.followUs'),
+          click() {
+            shell.openExternal('https://twitter.com/marktextapp')
+          }
+        },
+        {
+          label: t('menu.help.support'),
+          click() {
+            shell.openExternal('https://github.com/sponsors/marktext')
+          }
+        },
+        {
+          type: 'separator'
+        },
+        {
+          label: t('menu.help.askQuestion'),
+          click() {
+            shell.openExternal('https://github.com/marktext/marktext/discussions')
+          }
+        },
+        {
+          label: t('menu.help.reportBug'),
+          click() {
+            shell.openExternal('https://github.com/marktext/marktext/issues')
+          }
+        },
+        {
+          label: t('menu.help.viewSource'),
+          click() {
+            shell.openExternal('https://github.com/marktext/marktext')
+          }
+        },
+        {
+          type: 'separator'
+        },
+        {
+          label: t('menu.help.license'),
+          click() {
+            shell.openExternal('https://github.com/marktext/marktext/blob/develop/LICENSE')
+          }
+        }
+      ]
     }
   ]
 

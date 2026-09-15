@@ -40,9 +40,11 @@
       "copyAsHtml": "Als HTML kopieren",
       "pasteAsPlainText": "Als reinen Text einfügen",
       "selectAll": "Alles auswählen",
+      "paragraphOperations": "Absatzbefehle",
       "duplicate": "Duplizieren",
       "createParagraph": "Absatz erstellen",
       "deleteParagraph": "Absatz löschen",
+      "findReplace": "Suchen und Ersetzen",
       "find": "Suchen",
       "replace": "Ersetzen",
       "findNext": "Weitersuchen",
@@ -74,7 +76,8 @@
       "taskList": "Aufgabenliste",
       "looseListItem": "Lockeres Listenelement",
       "horizontalRule": "Horizontale Linie",
-      "frontMatter": "Front Matter"
+      "frontMatter": "Front Matter",
+      "moreBlocks": "Weitere Blöcke"
     },
     "window": {
       "title": "Fenster",
@@ -96,6 +99,7 @@
       "followUs": "Folgen Sie uns",
       "support": "MarkText unterstützen",
       "license": "Lizenz",
+      "onlineResources": "Online-Ressourcen",
       "about": "Über",
       "checkUpdates": "Updates prüfen"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "Inline-Code",
       "inlineMath": "Inline-Mathematik",
       "hyperlink": "Hyperlink",
-      "clearFormat": "Format löschen"
+      "clearFormat": "Format löschen",
+      "moreStyles": "Weitere Stile"
     },
     "theme": {
       "theme": "Design (&T)",

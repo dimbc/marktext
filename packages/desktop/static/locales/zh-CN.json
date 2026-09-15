@@ -40,9 +40,11 @@
       "copyAsHtml": "复制为 HTML",
       "pasteAsPlainText": "粘贴为纯文本",
       "selectAll": "全选",
+      "paragraphOperations": "段落操作",
       "duplicate": "创建副本",
       "createParagraph": "创建段落",
       "deleteParagraph": "删除段落",
+      "findReplace": "查找与替换",
       "find": "查找",
       "replace": "替换",
       "findNext": "查找下一个",
@@ -74,7 +76,8 @@
       "taskList": "任务列表",
       "looseListItem": "宽松列表项",
       "horizontalRule": "水平分割线",
-      "frontMatter": "前置元数据"
+      "frontMatter": "前置元数据",
+      "moreBlocks": "更多块级"
     },
     "window": {
       "title": "窗口",
@@ -96,6 +99,7 @@
       "followUs": "关注我们",
       "support": "支持 MarkText",
       "license": "许可证",
+      "onlineResources": "在线资源",
       "about": "关于",
       "checkUpdates": "检查更新"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "行内代码",
       "inlineMath": "行内数学",
       "hyperlink": "超链接",
-      "clearFormat": "清除格式"
+      "clearFormat": "清除格式",
+      "moreStyles": "更多样式"
     },
     "theme": {
       "theme": "主题(&T)",

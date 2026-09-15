@@ -39,15 +39,25 @@ export default function(
   preferences: Preference,
   recentlyUsedFiles: string[] = []
 ): MenuItemConstructorOptions[] {
-  return [
-    ...(process.platform === 'darwin' ? [marktext(keybindings)] : []),
+  const isDarwin = process.platform === 'darwin'
+  const menus: MenuItemConstructorOptions[] = [
+    ...(isDarwin ? [marktext(keybindings)] : []),
     file(keybindings, preferences, recentlyUsedFiles),
     edit(keybindings),
     paragraph(keybindings),
-    format(keybindings),
-    window(keybindings),
-    theme(preferences),
-    view(keybindings),
-    help()
+    format(keybindings)
   ]
+
+  if (isDarwin) {
+    // macOS owns the Window menu: its `window` role drives the automatically
+    // appended entries, so it has to stay a top-level menu there.
+    menus.push(window(keybindings), theme(preferences), view(keybindings))
+  } else {
+    // On Windows and Linux the rarely touched Window/Theme entries fold into
+    // View, which drops the menu bar from eight entries to six.
+    menus.push(view(keybindings, [window(keybindings), theme(preferences)]))
+  }
+
+  menus.push(help())
+  return menus
 }

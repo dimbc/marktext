@@ -39,36 +39,6 @@ export default function(keybindings: Keybindings): MenuItemConstructorOptions {
         type: 'separator'
       },
       {
-        id: 'superscriptMenuItem',
-        label: t('menu.format.superscript'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('format.superscript') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.superscript(focusedWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        id: 'subscriptMenuItem',
-        label: t('menu.format.subscript'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('format.subscript') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.subscript(focusedWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        id: 'highlightMenuItem',
-        label: t('menu.format.highlight'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('format.highlight') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.highlight(focusedWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        type: 'separator'
-      },
-      {
         id: 'inlineCodeMenuItem',
         label: t('menu.format.inlineCode'),
         type: 'checkbox',
@@ -99,22 +69,59 @@ export default function(keybindings: Keybindings): MenuItemConstructorOptions {
         }
       },
       {
-        id: 'hyperlinkMenuItem',
-        label: t('menu.format.hyperlink'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('format.hyperlink') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.hyperlink(focusedWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        id: 'imageMenuItem',
-        label: t('menu.format.image'),
-        type: 'checkbox',
-        accelerator: keybindings.getAccelerator('format.image') ?? undefined,
-        click(_menuItem, focusedWindow) {
-          actions.image(focusedWindow as BrowserWindow | undefined)
-        }
+        // The long tail of rarely used inline styles folds into one submenu so
+        // the Format menu stays short; compare the Paragraph menu grouping.
+        label: t('menu.format.moreStyles'),
+        submenu: [
+          {
+            id: 'superscriptMenuItem',
+            label: t('menu.format.superscript'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('format.superscript') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.superscript(focusedWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            id: 'subscriptMenuItem',
+            label: t('menu.format.subscript'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('format.subscript') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.subscript(focusedWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            id: 'highlightMenuItem',
+            label: t('menu.format.highlight'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('format.highlight') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.highlight(focusedWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            type: 'separator'
+          },
+          {
+            id: 'hyperlinkMenuItem',
+            label: t('menu.format.hyperlink'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('format.hyperlink') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.hyperlink(focusedWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            id: 'imageMenuItem',
+            label: t('menu.format.image'),
+            type: 'checkbox',
+            accelerator: keybindings.getAccelerator('format.image') ?? undefined,
+            click(_menuItem, focusedWindow) {
+              actions.image(focusedWindow as BrowserWindow | undefined)
+            }
+          }
+        ]
       },
       {
         type: 'separator'

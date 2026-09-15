@@ -1,6 +1,7 @@
 import { type BrowserWindow, type Menu, type MenuItem } from 'electron'
 import { COMMANDS } from '../../commands'
 import type { CommandManager } from '../../commands'
+import { collectMenuItems } from './menuTree'
 
 const MENU_ID_FORMAT_MAP: Readonly<Record<string, string>> = Object.freeze({
   strongMenuItem: 'strong',
@@ -102,8 +103,9 @@ export const loadFormatCommands = (commandManager: CommandManager): void => {
  */
 export const updateFormatMenu = (applicationMenu: Menu, formats: Record<string, boolean>): void => {
   const formatMenuItem: MenuItem = applicationMenu.getMenuItemById('formatMenuItem')!
-  formatMenuItem.submenu!.items.forEach((item: MenuItem) => (item.checked = false))
-  formatMenuItem.submenu!.items.forEach((item: MenuItem) => {
+  const items = collectMenuItems(formatMenuItem)
+  items.forEach((item: MenuItem) => (item.checked = false))
+  items.forEach((item: MenuItem) => {
     if (item.id && formats[MENU_ID_FORMAT_MAP[item.id]!]) {
       item.checked = true
     }

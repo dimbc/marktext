@@ -7,6 +7,7 @@ import { isLinux, isOsx, isWindows } from '../config'
 import { updateSidebarMenu } from '../menu/actions/edit'
 import { updateFormatMenu } from '../menu/actions/format'
 import { updateSelectionMenus, type SelectionState } from '../menu/actions/paragraph'
+import { collectMenuItems } from '../menu/actions/menuTree'
 import { onInternalChannel } from '../utils/internalIpc'
 import { viewLayoutChanged } from '../menu/actions/view'
 import configureMenu, { configSettingMenu } from '../menu/templates'
@@ -520,7 +521,9 @@ class AppMenu {
       const menu = this.getWindowMenuById(windowId)
       for (const id of ['paragraphMenuEntry', 'formatMenuItem']) {
         const entry = menu.getMenuItemById(id)
-        entry?.submenu?.items.forEach((item) => (item.enabled = enabled))
+        if (entry) {
+          collectMenuItems(entry).forEach((item) => (item.enabled = enabled))
+        }
       }
     })
 

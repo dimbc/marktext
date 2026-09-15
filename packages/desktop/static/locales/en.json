@@ -40,9 +40,11 @@
       "copyAsHtml": "Copy As HTML",
       "pasteAsPlainText": "Paste as Plain Text",
       "selectAll": "Select All",
+      "paragraphOperations": "Paragraph Operations",
       "duplicate": "Duplicate",
       "createParagraph": "Create Paragraph",
       "deleteParagraph": "Delete Paragraph",
+      "findReplace": "Find and Replace",
       "find": "Find",
       "replace": "Replace",
       "findNext": "Find Next",
@@ -74,7 +76,8 @@
       "taskList": "Task List",
       "looseListItem": "Loose List Item",
       "horizontalRule": "Horizontal Rule",
-      "frontMatter": "Front Matter"
+      "frontMatter": "Front Matter",
+      "moreBlocks": "More Blocks"
     },
     "window": {
       "title": "Window",
@@ -96,6 +99,7 @@
       "followUs": "Follow Us",
       "support": "Support MarkText",
       "license": "License",
+      "onlineResources": "Online Resources",
       "about": "About",
       "checkUpdates": "Check for Updates"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "Inline Code",
       "inlineMath": "Inline Math",
       "hyperlink": "Hyperlink",
-      "clearFormat": "Clear Formatting"
+      "clearFormat": "Clear Formatting",
+      "moreStyles": "More Styles"
     },
     "theme": {
       "theme": "&Theme",

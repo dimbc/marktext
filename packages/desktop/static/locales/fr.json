@@ -40,9 +40,11 @@
       "copyAsHtml": "Copier en HTML",
       "pasteAsPlainText": "Coller en texte brut",
       "selectAll": "Sélectionner tout",
+      "paragraphOperations": "Opérations sur les paragraphes",
       "duplicate": "Dupliquer",
       "createParagraph": "Créer un paragraphe",
       "deleteParagraph": "Supprimer le paragraphe",
+      "findReplace": "Rechercher et remplacer",
       "find": "Rechercher",
       "replace": "Remplacer",
       "findNext": "Rechercher suivant",
@@ -74,7 +76,8 @@
       "taskList": "Liste de tâches",
       "looseListItem": "Élément de liste lâche",
       "horizontalRule": "Règle horizontale",
-      "frontMatter": "Front Matter"
+      "frontMatter": "Front Matter",
+      "moreBlocks": "Autres blocs"
     },
     "window": {
       "title": "Fenêtre",
@@ -96,6 +99,7 @@
       "followUs": "Suivez-nous",
       "support": "Soutenir MarkText",
       "license": "Licence",
+      "onlineResources": "Ressources en ligne",
       "about": "À propos",
       "checkUpdates": "Vérifier les mises à jour"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "Code en ligne",
       "inlineMath": "Math en ligne",
       "hyperlink": "Hyperlien",
-      "clearFormat": "Effacer le format"
+      "clearFormat": "Effacer le format",
+      "moreStyles": "Autres styles"
     },
     "theme": {
       "theme": "Thème (&T)",

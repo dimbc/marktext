@@ -40,9 +40,11 @@
       "copyAsHtml": "HTML Olarak Kopyala",
       "pasteAsPlainText": "Düz Metin Olarak Yapıştır",
       "selectAll": "Tümünü Seç",
+      "paragraphOperations": "Paragraf işlemleri",
       "duplicate": "Çoğalt",
       "createParagraph": "Paragraf Oluştur",
       "deleteParagraph": "Paragrafı Sil",
+      "findReplace": "Bul ve değiştir",
       "find": "Bul",
       "replace": "Değiştir",
       "findNext": "Sonrakini Bul",
@@ -74,7 +76,8 @@
       "taskList": "Görev Listesi",
       "looseListItem": "Gevşek Liste Öğesi",
       "horizontalRule": "Yatay Çizgi",
-      "frontMatter": "Ön Bilgi"
+      "frontMatter": "Ön Bilgi",
+      "moreBlocks": "Diğer bloklar"
     },
     "window": {
       "title": "Pencere",
@@ -96,6 +99,7 @@
       "followUs": "Bizi Takip Edin",
       "support": "MarkText'e Destek Ol",
       "license": "Lisans",
+      "onlineResources": "Çevrimiçi kaynaklar",
       "about": "Hakkında",
       "checkUpdates": "Güncellemeleri Denetle"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "Satır İçi Kod",
       "inlineMath": "Satır İçi Matematik",
       "hyperlink": "Köprü",
-      "clearFormat": "Biçimlendirmeyi Temizle"
+      "clearFormat": "Biçimlendirmeyi Temizle",
+      "moreStyles": "Diğer stiller"
     },
     "theme": {
       "theme": "&Tema",

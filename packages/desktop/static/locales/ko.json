@@ -40,9 +40,11 @@
       "copyAsHtml": "HTML로 복사",
       "pasteAsPlainText": "일반 텍스트로 붙여넣기",
       "selectAll": "모두 선택",
+      "paragraphOperations": "단락 작업",
       "duplicate": "복제",
       "createParagraph": "단락 만들기",
       "deleteParagraph": "단락 삭제",
+      "findReplace": "찾기 및 바꾸기",
       "find": "찾기",
       "replace": "바꾸기",
       "findNext": "다음 찾기",
@@ -74,7 +76,8 @@
       "taskList": "작업 목록",
       "looseListItem": "느슨한 목록 항목",
       "horizontalRule": "수평선",
-      "frontMatter": "프론트 매터"
+      "frontMatter": "프론트 매터",
+      "moreBlocks": "추가 블록"
     },
     "window": {
       "title": "창",
@@ -96,6 +99,7 @@
       "followUs": "팔로우하기",
       "support": "MarkText 후원",
       "license": "라이선스",
+      "onlineResources": "온라인 리소스",
       "about": "정보",
       "checkUpdates": "업데이트 확인"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "인라인 코드",
       "inlineMath": "인라인 수식",
       "hyperlink": "하이퍼링크",
-      "clearFormat": "서식 지우기"
+      "clearFormat": "서식 지우기",
+      "moreStyles": "추가 스타일"
     },
     "theme": {
       "theme": "&테마",

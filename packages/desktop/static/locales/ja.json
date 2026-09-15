@@ -40,9 +40,11 @@
       "copyAsHtml": "HTML としてコピー",
       "pasteAsPlainText": "プレーンテキストとして貼り付け",
       "selectAll": "すべて選択",
+      "paragraphOperations": "段落操作",
       "duplicate": "複製",
       "createParagraph": "段落を作成",
       "deleteParagraph": "段落を削除",
+      "findReplace": "検索と置換",
       "find": "検索",
       "replace": "置換",
       "findNext": "次を検索",
@@ -74,7 +76,8 @@
       "taskList": "タスクリスト",
       "looseListItem": "ルーズリスト項目",
       "horizontalRule": "水平線",
-      "frontMatter": "フロントマター"
+      "frontMatter": "フロントマター",
+      "moreBlocks": "その他のブロック"
     },
     "window": {
       "title": "ウィンドウ",
@@ -96,6 +99,7 @@
       "followUs": "フォローする",
       "support": "MarkText を支援",
       "license": "ライセンス",
+      "onlineResources": "オンラインリソース",
       "about": "バージョン情報",
       "checkUpdates": "更新の確認"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "インラインコード",
       "inlineMath": "インライン数式",
       "hyperlink": "ハイパーリンク",
-      "clearFormat": "書式をクリア"
+      "clearFormat": "書式をクリア",
+      "moreStyles": "その他のスタイル"
     },
     "theme": {
       "theme": "テーマ (&T)",

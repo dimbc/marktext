@@ -85,66 +85,75 @@ export default function(keybindings: Keybindings): MenuItemConstructorOptions {
         type: 'separator'
       },
       {
-        label: t('menu.edit.duplicate'),
-        accelerator: keybindings.getAccelerator(COMMANDS.EDIT_DUPLICATE) ?? undefined,
-        click(_menuItem, browserWindow) {
-          actions.editorDuplicate(browserWindow as BrowserWindow | undefined)
-        }
+        // Rarely used line-level commands. They live one level down so the
+        // Edit menu stays readable; compare the Theme grouping in #4534.
+        label: t('menu.edit.paragraphOperations'),
+        submenu: [
+          {
+            label: t('menu.edit.duplicate'),
+            accelerator: keybindings.getAccelerator(COMMANDS.EDIT_DUPLICATE) ?? undefined,
+            click(_menuItem, browserWindow) {
+              actions.editorDuplicate(browserWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            label: t('menu.edit.createParagraph'),
+            accelerator: keybindings.getAccelerator(COMMANDS.EDIT_CREATE_PARAGRAPH) ?? undefined,
+            click(_menuItem, browserWindow) {
+              actions.editorCreateParagraph(browserWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            label: t('menu.edit.deleteParagraph'),
+            accelerator: keybindings.getAccelerator(COMMANDS.EDIT_DELETE_PARAGRAPH) ?? undefined,
+            click(_menuItem, browserWindow) {
+              actions.editorDeleteParagraph(browserWindow as BrowserWindow | undefined)
+            }
+          }
+        ]
       },
       {
-        label: t('menu.edit.createParagraph'),
-        accelerator: keybindings.getAccelerator(COMMANDS.EDIT_CREATE_PARAGRAPH) ?? undefined,
-        click(_menuItem, browserWindow) {
-          actions.editorCreateParagraph(browserWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        label: t('menu.edit.deleteParagraph'),
-        accelerator: keybindings.getAccelerator(COMMANDS.EDIT_DELETE_PARAGRAPH) ?? undefined,
-        click(_menuItem, browserWindow) {
-          actions.editorDeleteParagraph(browserWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        type: 'separator'
-      },
-      {
-        label: t('menu.edit.find'),
-        accelerator: keybindings.getAccelerator(COMMANDS.EDIT_FIND) ?? undefined,
-        click(_menuItem, browserWindow) {
-          actions.editorFind(browserWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        label: t('menu.edit.findNext'),
-        accelerator: keybindings.getAccelerator(COMMANDS.EDIT_FIND_NEXT) ?? undefined,
-        click(_menuItem, browserWindow) {
-          actions.editorFindNext(browserWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        label: t('menu.edit.findPrevious'),
-        accelerator: keybindings.getAccelerator(COMMANDS.EDIT_FIND_PREVIOUS) ?? undefined,
-        click(_menuItem, browserWindow) {
-          actions.editorFindPrevious(browserWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        label: t('menu.edit.replace'),
-        accelerator: keybindings.getAccelerator(COMMANDS.EDIT_REPLACE) ?? undefined,
-        click(_menuItem, browserWindow) {
-          actions.editorReplace(browserWindow as BrowserWindow | undefined)
-        }
-      },
-      {
-        type: 'separator'
-      },
-      {
-        label: t('menu.edit.findInFolder'),
-        accelerator: keybindings.getAccelerator(COMMANDS.EDIT_FIND_IN_FOLDER) ?? undefined,
-        click(_menuItem, browserWindow) {
-          actions.findInFolder(browserWindow as BrowserWindow | undefined)
-        }
+        label: t('menu.edit.findReplace'),
+        submenu: [
+          {
+            label: t('menu.edit.find'),
+            accelerator: keybindings.getAccelerator(COMMANDS.EDIT_FIND) ?? undefined,
+            click(_menuItem, browserWindow) {
+              actions.editorFind(browserWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            label: t('menu.edit.findNext'),
+            accelerator: keybindings.getAccelerator(COMMANDS.EDIT_FIND_NEXT) ?? undefined,
+            click(_menuItem, browserWindow) {
+              actions.editorFindNext(browserWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            label: t('menu.edit.findPrevious'),
+            accelerator: keybindings.getAccelerator(COMMANDS.EDIT_FIND_PREVIOUS) ?? undefined,
+            click(_menuItem, browserWindow) {
+              actions.editorFindPrevious(browserWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            label: t('menu.edit.replace'),
+            accelerator: keybindings.getAccelerator(COMMANDS.EDIT_REPLACE) ?? undefined,
+            click(_menuItem, browserWindow) {
+              actions.editorReplace(browserWindow as BrowserWindow | undefined)
+            }
+          },
+          {
+            type: 'separator'
+          },
+          {
+            label: t('menu.edit.findInFolder'),
+            accelerator: keybindings.getAccelerator(COMMANDS.EDIT_FIND_IN_FOLDER) ?? undefined,
+            click(_menuItem, browserWindow) {
+              actions.findInFolder(browserWindow as BrowserWindow | undefined)
+            }
+          }
+        ]
       },
       {
         type: 'separator'

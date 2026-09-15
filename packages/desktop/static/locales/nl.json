@@ -40,9 +40,11 @@
       "copyAsHtml": "Kopiëren als HTML",
       "pasteAsPlainText": "Plakken als platte tekst",
       "selectAll": "Alles selecteren",
+      "paragraphOperations": "Alineabewerkingen",
       "duplicate": "Dupliceren",
       "createParagraph": "Alinea aanmaken",
       "deleteParagraph": "Alinea verwijderen",
+      "findReplace": "Zoeken en vervangen",
       "find": "Zoeken",
       "replace": "Vervangen",
       "findNext": "Volgende zoeken",
@@ -74,7 +76,8 @@
       "taskList": "Takenlijst",
       "looseListItem": "Los lijstitem",
       "horizontalRule": "Horizontale lijn",
-      "frontMatter": "Front Matter"
+      "frontMatter": "Front Matter",
+      "moreBlocks": "Meer blokken"
     },
     "window": {
       "title": "Venster",
@@ -96,6 +99,7 @@
       "followUs": "Volg ons",
       "support": "Steun MarkText",
       "license": "Licentie",
+      "onlineResources": "Online bronnen",
       "about": "Over",
       "checkUpdates": "Controleer op updates"
     },
@@ -136,7 +140,8 @@
       "inlineCode": "Inline code",
       "inlineMath": "Inline wiskunde",
       "hyperlink": "Hyperlink",
-      "clearFormat": "Opmaak wissen"
+      "clearFormat": "Opmaak wissen",
+      "moreStyles": "Meer stijlen"
     },
     "theme": {
       "theme": "&Thema",
