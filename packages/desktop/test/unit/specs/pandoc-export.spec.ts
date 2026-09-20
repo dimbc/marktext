@@ -11,7 +11,11 @@ vi.mock('child_process', () => {
   return { default: { spawn }, spawn }
 })
 
-import pandoc, { PANDOC_EXPORT_FORMATS, getPandocReader } from 'main_renderer/utils/pandoc'
+import pandoc, {
+  PANDOC_EXPORT_FORMATS,
+  getPandocLanguage,
+  getPandocReader
+} from 'main_renderer/utils/pandoc'
 
 /** Stands in for the ChildProcess that `spawn` would hand back. */
 class FakeProcess extends EventEmitter {
@@ -73,6 +77,51 @@ describe('pandoc export', () => {
     it('names no extension beyond the ones pandoc 3.1.3 accepts', () => {
       expect(getPandocReader(true)).not.toMatch(/tex_math_gfm|alerts/)
     })
+
+    // `gfm` enables footnotes on its own, while the editor renders them only
+    // when its own preference says so. Without `-footnotes`, a `[^1]` the editor
+    // shows as literal text turns into a real footnote in the exported file.
+    it('keeps footnotes literal when the editor does not render them', () => {
+      expect(getPandocReader(false, false)).toBe('gfm-footnotes')
+    })
+  })
+
+  describe('getPandocLanguage', () => {
+    // pandoc carries Chinese under a script subtag only — it ships `zh-Hans`
+    // and `zh-Hant` and no `zh-CN`, and an unresolvable tag makes every export
+    // complain about pandoc's own translation files (#5379).
+    it('spells the Chinese region as the script subtag pandoc carries', () => {
+      expect(getPandocLanguage('zh-CN')).toBe('zh-Hans')
+      expect(getPandocLanguage('zh_SG')).toBe('zh-Hans')
+      expect(getPandocLanguage('zh-TW')).toBe('zh-Hant')
+      expect(getPandocLanguage('zh-Hant')).toBe('zh-Hant')
+    })
+
+    it('passes every other locale through unchanged', () => {
+      expect(getPandocLanguage('en-US')).toBe('en-US')
+      expect(getPandocLanguage('ja')).toBe('ja')
+    })
+  })
+
+  describe('locating the binary', () => {
+    // `MARKTEXT_PANDOC` is the documented way to point at a pandoc the PATH
+    // lookup cannot find: a portable copy, another drive. `process.execPath`
+    // stands in for it here because it is a file that certainly exists.
+    it('spawns the binary MARKTEXT_PANDOC names', async() => {
+      process.env.MARKTEXT_PANDOC = process.execPath
+      const proc = startProcess()
+
+      const pending = pandoc.toFile('docx', '/tmp/x.docx', 'x')
+      proc.emit('close', 0)
+      await pending
+
+      expect(spawnMock).toHaveBeenCalledWith(process.execPath, expect.any(Array), expect.anything())
+    })
+
+    it('reports pandoc as available when MARKTEXT_PANDOC points at a file', () => {
+      process.env.MARKTEXT_PANDOC = process.execPath
+      expect(pandoc.exists()).toBe(true)
+    })
   })
 
   describe('pandoc.toFile', () => {
@@ -116,6 +165,57 @@ describe('pandoc export', () => {
       await pending
 
       expect(argsOfLastSpawn().slice(0, 2)).toEqual(['-f', 'gfm+superscript+subscript'])
+    })
+
+    // The html5 writer copies an image `src` verbatim, so an export written
+    // anywhere but the source folder showed broken pictures where docx/odt/epub
+    // would have carried the bytes (#5379).
+    it('inlines the resources of an HTML export', async() => {
+      const proc = startProcess()
+
+      const pending = pandoc.toFile('html5', '/tmp/notes.html', 'x')
+      proc.emit('close', 0)
+      await pending
+
+      expect(argsOfLastSpawn()).toEqual([
+        '-f',
+        'gfm',
+        '-t',
+        'html5',
+        '-s',
+        '--embed-resources',
+        '-o',
+        '/tmp/notes.html'
+      ])
+    })
+
+    // The document arrives on stdin, so pandoc has no source file to take a
+    // title from; the caller passes what each writer wants.
+    it('passes metadata on as --metadata key:value', async() => {
+      const proc = startProcess()
+
+      const pending = pandoc.toFile('epub3', '/tmp/x.epub', 'x', {
+        metadata: { title: 'Notes: draft', lang: 'zh-Hans' }
+      })
+      proc.emit('close', 0)
+      await pending
+
+      const args = argsOfLastSpawn()
+      expect(args).toContain('--metadata=title:Notes: draft')
+      expect(args).toContain('--metadata=lang:zh-Hans')
+      expect(args.slice(-2)).toEqual(['-o', '/tmp/x.epub'])
+    })
+
+    // An empty value is exactly what pandoc complains about, so it is dropped
+    // rather than passed on.
+    it('drops an empty metadata value', async() => {
+      const proc = startProcess()
+
+      const pending = pandoc.toFile('docx', '/tmp/x.docx', 'x', { metadata: { title: '' } })
+      proc.emit('close', 0)
+      await pending
+
+      expect(argsOfLastSpawn().some((arg) => arg.startsWith('--metadata'))).toBe(false)
     })
 
     it('reports the warnings pandoc prints on a successful conversion', async() => {

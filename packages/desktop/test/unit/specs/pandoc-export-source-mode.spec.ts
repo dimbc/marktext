@@ -129,6 +129,20 @@ describe('pandoc export payload (#5379)', () => {
     expect(payload.superSubScript).toBe(true)
   })
 
+  // Same reason: `gfm` enables footnotes on its own, so the reader has to be
+  // told when the editor does not render them.
+  it('reports the footnote preference to the main process', () => {
+    const store = useEditorStore()
+    seedCurrentFile(store)
+    usePreferencesStore().footnote = false
+    const sendSpy = vi.spyOn(window.electron.ipcRenderer, 'send')
+
+    store.EXPORT_PANDOC('docx')
+
+    const payload = pandocCall(sendSpy)?.[1] as { footnote: boolean }
+    expect(payload.footnote).toBe(false)
+  })
+
   it('does nothing when no tab is open', () => {
     const store = useEditorStore()
     store.currentFile = null
