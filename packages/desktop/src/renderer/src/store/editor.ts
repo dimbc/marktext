@@ -1554,32 +1554,54 @@ export const useEditorStore = defineStore('editor', {
       )
     },
 
+    /** Title for an exported file: the shallowest of the first few headings. */
+    DOCUMENT_TITLE(): string {
+      const { listToc } = this
+      if (!listToc || listToc.length === 0) return ''
+
+      let headerRef: TocItem | undefined = listToc[0]
+      const len = Math.min(listToc.length, 6)
+      for (let i = 1; i < len; ++i) {
+        if (headerRef?.lvl === 1) break
+        const header = listToc[i]
+        if (header && headerRef && (headerRef.lvl ?? 0) > (header.lvl ?? 0)) {
+          headerRef = header
+        }
+      }
+      return headerRef?.content ?? ''
+    },
+
     EXPORT({ type, content, pageOptions }: ExportPayload): void {
       if (this.currentFile === null) return
-
-      let title = ''
-      const { listToc } = this
-      if (listToc && listToc.length > 0) {
-        let headerRef: TocItem | undefined = listToc[0]
-        const len = Math.min(listToc.length, 6)
-        for (let i = 1; i < len; ++i) {
-          if (headerRef?.lvl === 1) break
-          const header = listToc[i]
-          if (header && headerRef && (headerRef.lvl ?? 0) > (header.lvl ?? 0)) {
-            headerRef = header
-          }
-        }
-        title = headerRef?.content ?? ''
-      }
 
       const { filename, pathname } = this.currentFile
       window.electron.ipcRenderer.send('mt::response-export', {
         type: type as ExportPayload['type'] as never,
-        title,
+        title: this.DOCUMENT_TITLE(),
         content: content ?? '',
         filename,
         pathname,
         pageOptions: pageOptions ?? {}
+      })
+    },
+
+    // Reads `currentFile.markdown` after a flush, the way `FILE_SAVE` does: in
+    // source-code mode CodeMirror writes straight to it and the engine is only
+    // synced when source mode is left, so `engine.getMarkdown()` would export a
+    // stale document (#5379).
+    EXPORT_PANDOC(target: string): void {
+      if (this.currentFile === null) return
+
+      this.flushActiveEditor()
+      const { pathname, markdown } = this.currentFile
+      const preferencesStore = usePreferencesStore()
+      window.electron.ipcRenderer.send('mt::response-pandoc-export', {
+        target,
+        markdown,
+        superSubScript: preferencesStore.superSubScript === true,
+        footnote: preferencesStore.footnote === true,
+        title: this.DOCUMENT_TITLE(),
+        pathname
       })
     },
 

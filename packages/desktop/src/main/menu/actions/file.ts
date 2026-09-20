@@ -20,9 +20,13 @@ import { EXTENSION_HASN, PANDOC_EXTENSIONS, URL_REG } from '../../config'
 import { normalizeAndResolvePath, resolveLocalLinkTarget, writeFile } from '../../filesystem'
 import { writeMarkdownFile } from '../../filesystem/markdown'
 import { getPath, getRecommendTitleFromMarkdownString } from '../../utils'
-import pandoc from '../../utils/pandoc'
-import { t } from '../../i18n'
-import type { TabOptions, UnsavedFile } from '@shared/types/files'
+import pandoc, {
+  PANDOC_EXPORT_FORMATS,
+  getPandocLanguage,
+  getPandocReader
+} from '../../utils/pandoc'
+import { t, getCurrentLanguage } from '../../i18n'
+import type { PandocExportPayload, TabOptions, UnsavedFile } from '@shared/types/files'
 
 type Win = BrowserWindow | null | undefined
 
@@ -144,6 +148,120 @@ const handleResponseForExport = async(e: IpcMainEvent, payload: ExportPayload): 
   }
 }
 
+/** Bodies are HTML and pandoc echoes document text into them, so escape first. */
+const escapeNotificationText = (text: string): string =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+const MAX_PANDOC_WARNING_LINES = 5
+
+/**
+ * The first few warning lines plus a count of the rest, since pandoc prints one
+ * per unresolved link and still exits 0.
+ */
+const summarizePandocWarnings = (warnings: string): string => {
+  const lines = warnings
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+
+  const shown = lines.slice(0, MAX_PANDOC_WARNING_LINES).map(escapeNotificationText)
+  const hidden = lines.length - MAX_PANDOC_WARNING_LINES
+  if (hidden > 0) {
+    shown.push(escapeNotificationText(t('dialog.exportWarningMore', { count: hidden })))
+  }
+
+  // The body is HTML, so pandoc's line-per-warning output needs explicit breaks.
+  return shown.join('<br>')
+}
+
+/** An unsaved document is named after its heading, which may contain a slash. */
+const sanitizeFilename = (name: string): string =>
+  name.replace(/[/\\:*?"<>|]/g, '-').trim() || 'Untitled'
+
+const handleResponseForPandocExport = async(
+  e: IpcMainEvent,
+  payload: PandocExportPayload
+): Promise<void> => {
+  const win = BrowserWindow.fromWebContents(e.sender)
+  if (!win) {
+    return
+  }
+
+  const format = PANDOC_EXPORT_FORMATS.find((f) => f.id === payload.target)
+  if (!format) {
+    log.error(`Unknown pandoc export target: ${payload.target}`)
+    return
+  }
+
+  const { markdown, title, pathname, superSubScript, footnote } = payload
+  // Both the save dialog and pandoc's link resolution need the document's folder.
+  const sourceDir = pathname ? path.dirname(pathname) : undefined
+  const nakedFilename = sanitizeFilename(
+    (pathname ? path.basename(pathname, path.extname(pathname)) : title) || 'Untitled'
+  )
+
+  let filePath = ''
+  // Awaited inside the try, so a save the OS refuses becomes a notification.
+  try {
+    const saved = await dialog.showSaveDialog(win, {
+      defaultPath: path.join(sourceDir ?? getPath('documents'), `${nakedFilename}${format.extension}`),
+      filters: [{ name: format.label, extensions: [format.extension.slice(1)] }]
+    })
+    filePath = saved.filePath
+
+    if (saved.canceled || !filePath || win.isDestroyed()) {
+      return
+    }
+
+    const { warnings } = await pandoc.toFile(format.target, filePath, markdown, {
+      cwd: sourceDir,
+      reader: getPandocReader(superSubScript === true, footnote === true),
+      // html5 takes `pagetitle` (a full `title` becomes a second heading), EPUB
+      // `title`, the rest neither; `lang` is the app's language, not the spawn
+      // environment's locale, which reaches the file as the string "C".
+      metadata: {
+        ...(format.target === 'html5'
+          ? { pagetitle: title || nakedFilename }
+          : format.target === 'epub3'
+            ? { title: title || nakedFilename }
+            : {}),
+        lang: getPandocLanguage(getCurrentLanguage())
+      }
+    })
+
+    // Exit code 0 is not a clean conversion: an image pandoc could not fetch
+    // becomes its alt text with nothing but a warning. The summary is the guard,
+    // not `warnings` (a lone newline is truthy but shows nothing), and it is sent
+    // first so the success notice can dismiss it in one click.
+    const message = summarizePandocWarnings(warnings)
+    if (message) {
+      log.warn(`pandoc export warnings for ${filePath}:`, warnings)
+      win.webContents.send('mt::show-notification', {
+        title: t('dialog.exportWarning'),
+        type: 'warning',
+        message
+      })
+    }
+    if (!win.isDestroyed()) {
+      win.webContents.send('mt::export-success', { type: format.id, filePath })
+    }
+  } catch (err) {
+    log.error('Error while exporting with pandoc:', err)
+    if (win.isDestroyed()) {
+      return
+    }
+    const ERROR_MSG =
+      (err instanceof Error && err.message) || `Error happened when export ${filePath}`
+    // pandoc errors run several lines and the body is HTML, so summarize; the
+    // raw text is the fallback when that leaves nothing.
+    win.webContents.send('mt::show-notification', {
+      title: t('dialog.exportFailure'),
+      type: 'error',
+      message: summarizePandocWarnings(ERROR_MSG) || escapeNotificationText(ERROR_MSG)
+    })
+  }
+}
+
 const handleResponseForPrint = async(e: IpcMainEvent): Promise<void> => {
   const win = BrowserWindow.fromWebContents(e.sender)
   if (!win) {
@@ -256,9 +374,9 @@ const showUnsavedFilesMessage = async(
   }
 }
 
-const noticePandocNotFound = (win: BrowserWindow): void => {
+const noticePandocNotFound = (win: BrowserWindow, titleKey = 'dialog.importWarning'): void => {
   win.webContents.send('mt::pandoc-not-exists', {
-    title: t('dialog.importWarning'),
+    title: t(titleKey),
     type: 'warning',
     message: t('dialog.installPandoc'),
     time: 10000
@@ -458,6 +576,11 @@ ipcMain.on('mt::close-window-confirm', async(e, unsavedFiles: UnsavedFile[]) => 
 ipcMain.on('mt::response-file-save', handleResponseForSave as Parameters<typeof ipcMain.on>[1])
 
 ipcMain.on('mt::response-export', handleResponseForExport as Parameters<typeof ipcMain.on>[1])
+
+ipcMain.on(
+  'mt::response-pandoc-export',
+  handleResponseForPandocExport as Parameters<typeof ipcMain.on>[1]
+)
 
 ipcMain.on('mt::response-print', handleResponseForPrint as Parameters<typeof ipcMain.on>[1])
 
@@ -681,6 +804,22 @@ export const exportFile = (win: Win, type: string): void => {
   if (win && win.webContents) {
     win.webContents.send('mt::show-export-dialog', type)
   }
+}
+
+/**
+ * Convert the current document with pandoc. Unlike `exportFile`, which renders
+ * HTML/PDF in the renderer, this needs the markdown source and a file target, so
+ * the renderer replies with both over `mt::response-pandoc-export`.
+ */
+export const exportWithPandoc = (win: Win, target: string): void => {
+  if (!win || !win.webContents) {
+    return
+  }
+  if (!pandoc.exists()) {
+    noticePandocNotFound(win, 'dialog.exportWarning')
+    return
+  }
+  win.webContents.send('mt::export-with-pandoc', target)
 }
 
 export const importFile = async(win: BrowserWindow | null): Promise<void> => {
