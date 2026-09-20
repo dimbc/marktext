@@ -1,0 +1,45 @@
+name: Fork Windows Build (temporary)
+
+# Temporary workflow: produces an unsigned Windows installer from a fork
+# branch, because the upstream PR build waits for a maintainer to approve the
+# run before it starts. Mirrors the windows job of .github/workflows/build.yml.
+#
+# Delete this file and the branch once the installer has been downloaded.
+
+on:
+  push:
+    branches:
+      - ci-win-build
+  workflow_dispatch:
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      # Must run before the build: downloads the Electron binary, applies the
+      # native-keymap patch, rebuilds the native modules (ced, native-keymap)
+      # for Electron's ABI and minifies the locale files.
+      - name: Run postinstall
+        run: pnpm tsx scripts/postinstall.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npm_config_user_agent: 'pnpm'
+
+      - name: Build Windows x64
+        run: pnpm run build:win:x64
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: marktext-windows-x64-fork
+          retention-days: 7
+          path: |
+            dist/*.exe
+            dist/*.zip
+          if-no-files-found: error
