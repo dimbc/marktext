@@ -191,4 +191,10 @@ export interface PandocExportPayload {
    * (`gfm` vs `gfm+superscript+subscript`), and only the renderer knows it.
    */
   superSubScript: boolean
+  /**
+   * Whether the editor's `footnote` preference is on. `gfm` enables footnotes on
+   * its own, so a `[^1]` the editor shows as literal text would become a real
+   * footnote in the exported file unless the reader turns the extension off.
+   */
+  footnote: boolean
 }

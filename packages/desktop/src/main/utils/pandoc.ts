@@ -1,5 +1,6 @@
 // Copy from https://github.com/utatti/simple-pandoc/blob/master/index.js
 import { spawn } from 'child_process'
+import path from 'path'
 import type { Readable } from 'stream'
 import commandExists from 'command-exists'
 import { isFile2 } from 'common/filesystem'
@@ -38,26 +39,85 @@ export const PANDOC_EXPORT_FORMATS: readonly PandocExportFormat[] = Object.freez
 /**
  * Reader to hand the document to pandoc with.
  *
- * MarkText edits GFM plus a few extensions, and pandoc's `markdown` reader
- * turns on extensions that change what the text says: `smart` curls quotes and
- * rewrites `--`, `@alice` turns into a citation, `:smile:` stays literal instead
- * of becoming an emoji, a paragraph starting with `|` becomes a line block, and
- * `# Title {#x}` loses the attribute. `gfm` reproduces what the editor shows.
+ * `gfm` reproduces what the editor shows, while pandoc's own `markdown` reader
+ * turns on extensions that change what the text says (`smart` curls quotes,
+ * `@alice` becomes a citation, `# Title {#x}` loses the attribute). Nothing
+ * newer is added on purpose: pandoc 3.1.3 (Ubuntu 24.04) exits with "The
+ * extension tex_math_gfm is not supported for gfm".
  *
  * `superSubScript` is off by default, so `~x~`/`^x^` must stay literal unless
- * the user asked for sub/superscript — hence the conditional extension. Nothing
- * newer is added on purpose: pandoc 3.1.3 (Ubuntu 24.04) exits with
- * "The extension tex_math_gfm is not supported for gfm" (same for `alerts`),
- * and it already enables `tex_math_dollars` for `gfm`.
+ * the user asked for sub/superscript. `gfm` enables footnotes on its own, which
+ * the editor only renders when its own `footnote` preference says so — hence
+ * `-footnotes`, so a `[^1]` shown as literal text stays literal in the file.
  */
-export const getPandocReader = (superSubScript: boolean): string =>
-  superSubScript ? 'gfm+superscript+subscript' : 'gfm'
+export const getPandocReader = (superSubScript: boolean, footnotes = true): string => {
+  let reader = 'gfm'
+  if (superSubScript) {
+    reader += '+superscript+subscript'
+  }
+  if (!footnotes) {
+    reader += '-footnotes'
+  }
+  return reader
+}
+
+/**
+ * The language tag to hand pandoc as `lang` metadata.
+ *
+ * pandoc carries Chinese under the script subtag only — it ships `zh-Hans` and
+ * `zh-Hant`, and no `zh`, `zh-CN` or `zh-TW`. A tag it cannot resolve makes the
+ * export print two lines about its own translations on every run; spelling the
+ * region subtag as the script subtag says the same thing and keeps the export
+ * quiet. Every other locale passes through untouched.
+ */
+const HANT_REGIONS = new Set(['hant', 'tw', 'hk', 'mo'])
+
+export const getPandocLanguage = (locale: string): string => {
+  const [language, region = ''] = locale.trim().split(/[-_]/)
+  if (language?.toLowerCase() !== 'zh') {
+    return locale
+  }
+  return HANT_REGIONS.has(region.toLowerCase()) ? 'zh-Hant' : 'zh-Hans'
+}
+
+/**
+ * Where the Windows installer puts pandoc when it was told not to touch `PATH`.
+ * Together with `MARKTEXT_PANDOC` and a plain `PATH` lookup this covers the
+ * three ways a user can have pandoc on a Windows machine. Windows only: on
+ * macOS and Linux `patchEnvPath` already adds the Homebrew and `/usr/local/bin`
+ * directories a GUI-launched app does not inherit (#2751).
+ */
+const pandocLocations = (): string[] => {
+  if (process.platform !== 'win32') {
+    return []
+  }
+  const { env } = process
+  return [
+    env.ProgramFiles,
+    env['ProgramFiles(x86)'],
+    env.LOCALAPPDATA,
+    env.ProgramData && path.join(env.ProgramData, 'chocolatey', 'bin'),
+    env.USERPROFILE && path.join(env.USERPROFILE, 'scoop', 'shims'),
+    env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links')
+  ]
+    .filter((dir): dir is string => !!dir)
+    .map((dir) => path.join(dir, 'pandoc.exe'))
+}
+
+/**
+ * Windows only: since the CVE-2024-27980 fix Node refuses to spawn a `.bat`/
+ * `.cmd` without `shell: true` (EINVAL), and a shell would mean quoting
+ * user-supplied paths by hand. Such a shim is therefore treated as absent so
+ * the next source gets a chance.
+ */
+const isBatchFile = (command: string): boolean =>
+  process.platform === 'win32' && /\.(bat|cmd)$/i.test(command.trim())
 
 const getCommand = (): string => {
   if (envPathExists()) {
     return process.env.MARKTEXT_PANDOC as string
   }
-  return pandocCommand
+  return pandocLocations().find((candidate) => isFile2(candidate)) ?? pandocCommand
 }
 
 interface PandocConverter {
@@ -103,10 +163,8 @@ const pandoc = ((from: string, to: string, ...args: string[]): PandocConverter =
 }) as PandocFn
 
 pandoc.exists = (): boolean => {
-  if (envPathExists()) {
-    return true
-  }
-  return commandExists.sync(pandocCommand)
+  const command = getCommand()
+  return command !== pandocCommand || commandExists.sync(pandocCommand)
 }
 
 export interface PandocToFileOptions {
@@ -120,6 +178,16 @@ export interface PandocToFileOptions {
   cwd?: string
   /** Reader used to parse `input`; see `getPandocReader`. */
   reader?: string
+  /**
+   * `--metadata key:value` pairs for the writer.
+   *
+   * The document arrives on stdin, so pandoc has no source file to take a title
+   * from: a standalone EPUB then comes out with no `<dc:title>` and prints a
+   * warning on every conversion. Which title a writer wants differs — see the
+   * caller. Empty values are dropped rather than passed on, because setting a
+   * field to the empty string is exactly what pandoc complains about.
+   */
+  metadata?: Record<string, string>
 }
 
 export interface PandocToFileResult {
@@ -145,8 +213,24 @@ pandoc.toFile = (
   options: PandocToFileOptions = {}
 ): Promise<PandocToFileResult> =>
   new Promise((resolve, reject) => {
-    const { cwd, reader = getPandocReader(false) } = options
-    const option = ['-f', reader, '-t', to, '-s', '-o', outputPath]
+    const { cwd, reader = getPandocReader(false), metadata = {} } = options
+    const option = ['-f', reader, '-t', to, '-s']
+
+    // The html5 writer copies an image `src` verbatim, so an export written
+    // anywhere but the source folder shows broken pictures where docx/odt/epub
+    // would have carried the bytes. Embedding inlines them; a source pandoc
+    // cannot fetch still degrades to a warning.
+    if (to === 'html5') {
+      option.push('--embed-resources')
+    }
+    // pandoc splits on the first colon only, so a title such as "Q3: plan" is
+    // passed through unchanged.
+    for (const [key, value] of Object.entries(metadata)) {
+      if (value) {
+        option.push(`--metadata=${key}:${value}`)
+      }
+    }
+    option.push('-o', outputPath)
 
     const proc = spawn(getCommand(), option, { cwd })
     let errorOutput = ''
@@ -172,7 +256,8 @@ pandoc.toFile = (
   })
 
 const envPathExists = (): boolean => {
-  return !!process.env.MARKTEXT_PANDOC && isFile2(process.env.MARKTEXT_PANDOC)
+  const fromEnv = process.env.MARKTEXT_PANDOC
+  return !!fromEnv && isFile2(fromEnv) && !isBatchFile(fromEnv)
 }
 
 export default pandoc

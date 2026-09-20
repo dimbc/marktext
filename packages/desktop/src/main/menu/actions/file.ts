@@ -20,8 +20,12 @@ import { EXTENSION_HASN, PANDOC_EXTENSIONS, URL_REG } from '../../config'
 import { normalizeAndResolvePath, resolveLocalLinkTarget, writeFile } from '../../filesystem'
 import { writeMarkdownFile } from '../../filesystem/markdown'
 import { getPath, getRecommendTitleFromMarkdownString } from '../../utils'
-import pandoc, { PANDOC_EXPORT_FORMATS, getPandocReader } from '../../utils/pandoc'
-import { t } from '../../i18n'
+import pandoc, {
+  PANDOC_EXPORT_FORMATS,
+  getPandocLanguage,
+  getPandocReader
+} from '../../utils/pandoc'
+import { t, getCurrentLanguage } from '../../i18n'
 import type { PandocExportPayload, TabOptions, UnsavedFile } from '@shared/types/files'
 
 type Win = BrowserWindow | null | undefined
@@ -160,18 +164,44 @@ const escapeNotificationText = (text: string): string =>
 const MAX_PANDOC_WARNING_LINES = 5
 
 /**
+ * Whether pandoc's line is about its own translation data files rather than the
+ * document. `getPandocLanguage` keeps the common case from happening at all, but
+ * pandoc ships translations for a fixed list of languages: a locale outside it
+ * still makes the writer report the file it could not load and then the term it
+ * could not look up, as two lines with the path echoed on the second. Neither
+ * says anything about the document and neither can be acted on from the editor.
+ */
+const isPandocTranslationWarning = (lines: string[], index: number): boolean => {
+  const line = lines[index] ?? ''
+  const couldNotLoad = '[WARNING] Could not load translations for '
+  if (line.startsWith(couldNotLoad)) {
+    return true
+  }
+  if (/^\[WARNING\] The term .+ has no translation defined\.$/.test(line)) {
+    return true
+  }
+  // The data file whose lookup failed, on the line after the warning about it.
+  return (
+    /^translations\/\S+\.ya?ml:/.test(line) && (lines[index - 1] ?? '').startsWith(couldNotLoad)
+  )
+}
+
+/**
  * pandoc reports every unresolved link on its own line and still exits 0, so a
  * document with fifty of them produces fifty lines. Show the first few and say
- * how many were dropped; the full text reaches the log either way.
+ * how many were dropped; the full text reaches the log either way. Filtering
+ * comes before the cap, so lines pandoc never should have printed do not eat
+ * into the five the user gets to see.
  */
 const summarizePandocWarnings = (warnings: string): string => {
   const lines = warnings
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
+  const relevant = lines.filter((_, index) => !isPandocTranslationWarning(lines, index))
 
-  const shown = lines.slice(0, MAX_PANDOC_WARNING_LINES).map(escapeNotificationText)
-  const hidden = lines.length - MAX_PANDOC_WARNING_LINES
+  const shown = relevant.slice(0, MAX_PANDOC_WARNING_LINES).map(escapeNotificationText)
+  const hidden = relevant.length - MAX_PANDOC_WARNING_LINES
   if (hidden > 0) {
     shown.push(escapeNotificationText(t('dialog.exportWarningMore', { count: hidden })))
   }
@@ -180,6 +210,15 @@ const summarizePandocWarnings = (warnings: string): string => {
   // single paragraph without the explicit breaks.
   return shown.join('<br>')
 }
+
+/**
+ * Flatten a document title into something every filesystem accepts as a file
+ * name: an unsaved document takes its name from the first heading, and a heading
+ * such as "Q1/Q2 report" would otherwise turn the output path into a subfolder
+ * pandoc cannot write to.
+ */
+const sanitizeFilename = (name: string): string =>
+  name.replace(/[/\\:*?"<>|]/g, '-').trim() || 'Untitled'
 
 const handleResponseForPandocExport = async(
   e: IpcMainEvent,
@@ -196,40 +235,62 @@ const handleResponseForPandocExport = async(
     return
   }
 
-  const { markdown, title, pathname, superSubScript } = payload
-  const dirname = pathname ? path.dirname(pathname) : getPath('documents')
+  const { markdown, title, pathname, superSubScript, footnote } = payload
+  // Relative links resolve against the folder holding the document, so it is
+  // needed by the save dialog and by the conversion itself.
+  const sourceDir = pathname ? path.dirname(pathname) : undefined
   // Strip whatever extension the source file carries so "notes.md" becomes
   // "notes.docx" rather than "notes.md.docx".
-  const nakedFilename =
+  const nakedFilename = sanitizeFilename(
     (pathname ? path.basename(pathname, path.extname(pathname)) : title) || 'Untitled'
+  )
 
-  const { filePath, canceled } = await dialog.showSaveDialog(win, {
-    defaultPath: path.join(dirname, `${nakedFilename}${format.extension}`),
-    filters: [{ name: format.label, extensions: [format.extension.slice(1)] }]
-  })
-
-  if (!filePath || canceled) {
-    return
-  }
-
-  // The document comes in over stdin, so pandoc resolves its relative links
-  // against the process cwd unless the source folder is passed along — and a
-  // link it cannot resolve only produces a warning on stderr while pandoc still
-  // exits 0.
-  const cwd = pathname ? path.dirname(pathname) : undefined
-
+  let filePath = ''
+  // The save dialog runs inside the try: a path the OS refuses (a volume that is
+  // no longer mounted, a parent that is now a regular file) rejects, and the
+  // catch below is what turns that into a notification instead of a click with
+  // no reaction at all.
   try {
-    const { warnings } = await pandoc.toFile(format.target, filePath, markdown, {
-      cwd,
-      reader: getPandocReader(superSubScript === true)
+    const saved = await dialog.showSaveDialog(win, {
+      defaultPath: path.join(sourceDir ?? getPath('documents'), `${nakedFilename}${format.extension}`),
+      filters: [{ name: format.label, extensions: [format.extension.slice(1)] }]
     })
-    win.webContents.send('mt::export-success', { type: format.id, filePath })
+    filePath = saved.filePath
+
+    if (saved.canceled || !filePath || win.isDestroyed()) {
+      // Cancelled, or the window was closed while the dialog was open — either
+      // way there is nothing left to convert for.
+      return
+    }
+
+    const { warnings } = await pandoc.toFile(format.target, filePath, markdown, {
+      // The document comes in over stdin, so pandoc resolves its relative links
+      // against the process cwd unless the source folder is passed along — and a
+      // link it cannot resolve only warns on stderr while pandoc still exits 0.
+      cwd: sourceDir,
+      reader: getPandocReader(superSubScript === true, footnote === true),
+      // Which title a writer wants differs: html5 fills <title> from `pagetitle`
+      // and would render a full `title` as a second heading, EPUB's title page is
+      // conventional so it takes `title` for <dc:title>, and the rest need
+      // neither. The spawn environment's locale reaches the file as the string
+      // "C", so the language the user actually reads is passed instead.
+      metadata: {
+        ...(format.target === 'html5'
+          ? { pagetitle: title || nakedFilename }
+          : format.target === 'epub3'
+            ? { title: title || nakedFilename }
+            : {}),
+        lang: getPandocLanguage(getCurrentLanguage())
+      }
+    })
 
     // Exit code 0 does not mean the conversion was clean: pandoc warns on
     // stderr about images it could not fetch and replaces them with their alt
     // text. Say so, otherwise the export looks perfect. The guard tests the
     // summary rather than `warnings`: a stderr holding only a newline is truthy
-    // but has nothing to show.
+    // but has nothing to show. The warning goes out before the success notice,
+    // because that notice offers to open the file manager and a click would
+    // otherwise dismiss the warning unread.
     const message = summarizePandocWarnings(warnings)
     if (message) {
       log.warn(`pandoc export warnings for ${filePath}:`, warnings)
@@ -239,14 +300,26 @@ const handleResponseForPandocExport = async(
         message
       })
     }
+    if (!win.isDestroyed()) {
+      win.webContents.send('mt::export-success', { type: format.id, filePath })
+    }
   } catch (err) {
     log.error('Error while exporting with pandoc:', err)
+    if (win.isDestroyed()) {
+      return
+    }
     const ERROR_MSG =
       (err instanceof Error && err.message) || `Error happened when export ${filePath}`
+    // pandoc failures are routinely multi-line ("pandoc: …" then "Error at
+    // \"source\" (line 12, column 3): …"), and the notification body is HTML:
+    // the same breaking and capping as the warnings keeps the position of the
+    // error readable. Summarizing can leave nothing behind when the whole
+    // stderr was pandoc talking about its own translations, so the raw text is
+    // the fallback rather than an empty notification.
     win.webContents.send('mt::show-notification', {
-      title: t('dialog.exportWarning'),
+      title: t('dialog.exportFailure'),
       type: 'error',
-      message: escapeNotificationText(ERROR_MSG)
+      message: summarizePandocWarnings(ERROR_MSG) || escapeNotificationText(ERROR_MSG)
     })
   }
 }

@@ -1604,6 +1604,7 @@ export const useEditorStore = defineStore('editor', {
         target,
         markdown,
         superSubScript: preferencesStore.superSubScript === true,
+        footnote: preferencesStore.footnote === true,
         title: this.DOCUMENT_TITLE(),
         pathname
       })
