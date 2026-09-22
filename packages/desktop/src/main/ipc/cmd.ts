@@ -1,6 +1,7 @@
 import fs from 'fs-extra'
 import { ipcMain } from 'electron'
 import commandExists from 'command-exists'
+import { resolvePandocCommand } from '../utils/pandoc'
 
 export const registerCmdHandlers = (): void => {
   ipcMain.handle('mt::cmd::exists', async(_event, name: string) => {
@@ -24,4 +25,9 @@ export const registerCmdHandlers = (): void => {
       return false
     }
   })
+
+  // `mt::cmd::exists` asks `PATH` only, and a pandoc install is exactly what
+  // #2751 leaves off `PATH`. This reports the command an export would really
+  // spawn, so the preferences pane can name the binary it found.
+  ipcMain.handle('mt::pandoc::command', () => resolvePandocCommand())
 }

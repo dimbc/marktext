@@ -538,6 +538,9 @@ class AppMenu {
       if (prefs.autoSave !== undefined) {
         this.updateAutoSaveMenu(prefs.autoSave)
       }
+      if (prefs.showPandocConvert !== undefined) {
+        this.updateAppMenu()
+      }
       if (prefs.language) {
         // Update main process language and rebuild menu
         setLanguage(prefs.language)
