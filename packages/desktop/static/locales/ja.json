@@ -485,7 +485,6 @@
         "description": "Pandoc 変換メニューを表示",
         "detailedDescription": "Pandoc がインストールされている必要があります",
         "found": "検出: {path}",
-        "foundNoPath": "検出しましたが、ファイルを特定できません",
         "notFound": "見つかりません",
         "recheck": "再検出"
       },

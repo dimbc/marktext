@@ -285,10 +285,9 @@ const pandoc = (async(from: string, to: string, ...args: string[]): Promise<stri
 pandoc.exists = async(): Promise<boolean> => (await findCommand()) !== null
 
 // The file `PATH` would run for `command`, or `null` when it holds none. `resolveCommand`
-// answers "which string spawns" and returns the bare name when PATH holds it, so a caller
-// that has to *name* the binary — the preference pane — needs this to turn it into a file.
-// `isExecutableFile` covers `X_OK`, which is a plain existence check on Windows.
-const findOnPath = (
+// returns the bare name when PATH holds it, so the pane needs this to name a real file.
+// `platform` and `env` are parameters rather than reads so a spec can pin both.
+export const findOnPath = (
   command: string,
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env
@@ -311,7 +310,7 @@ const findOnPath = (
 
 /**
  * The binary the preference pane names, which `exists()` cannot: a bare name from
- * `resolveCommand` becomes the file PATH resolves it to, and an unresolvable one stays
+ * `resolveCommand` becomes the file PATH resolves it to, and one that names no file stays
  * `null` so the pane reports Not found rather than a name that would not spawn (#2751).
  */
 export const resolvePandocCommand = async(): Promise<PandocCommandInfo> => {

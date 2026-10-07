@@ -485,7 +485,6 @@
         "description": "Afficher le menu de conversion Pandoc",
         "detailedDescription": "Nécessite l'installation de Pandoc",
         "found": "Trouvé : {path}",
-        "foundNoPath": "Trouvé, mais aucun fichier à nommer",
         "notFound": "Introuvable",
         "recheck": "Revérifier"
       },

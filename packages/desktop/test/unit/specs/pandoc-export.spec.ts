@@ -9,17 +9,9 @@ vi.mock('child_process', () => {
   return { default: { spawn }, spawn }
 })
 
-// The `command-exists` fallback reads the process environment, so it has to be pinned rather
-// than left to whatever the machine running this suite happens to have installed.
-vi.mock('command-exists', () => {
-  const sync = vi.fn(() => false)
-  return { default: { sync }, sync }
-})
-
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
-import commandExists from 'command-exists'
 import pandoc, {
   PANDOC_EXPORT_FORMATS,
   findOnPath,
@@ -31,7 +23,6 @@ import pandoc, {
   listLinkedMedia,
   listReaderExtensions,
   pandocLocations,
-  resolvePandocCommand,
   shouldMirrorMedia,
   type PandocReaderExtensions,
   type PandocToFileOptions
@@ -301,8 +292,9 @@ describe('pandoc export', () => {
     expect(pandocLocations('linux', env)).toEqual([])
   })
 
-  // The pane has to name the binary and `command-exists` answers only yes or no, so the lookup
-  // returns the file itself; `platform` and `env` are what pin both (#2751).
+  // `resolveCommand` names the bare command when PATH holds it, so the pane needs this to
+  // turn that name into the file it stands for (#2751). `platform` and `env` pin it, rather
+  // than whatever the machine running the suite happens to have installed.
   it('names the file PATH would run for pandoc', () => {
     const folder = makeLookupFolder()
     const binary = path.join(folder, 'pandoc.exe')
@@ -315,26 +307,6 @@ describe('pandoc export', () => {
     expect(findOnPath('pandoc', 'win32', { PATH: folder, PATHEXT: '.BAT' })).toBeNull()
     expect(findOnPath('pandoc', 'win32', { PATH: 'C:\\nowhere' })).toBeNull()
     expect(findOnPath('pandoc', 'win32', {})).toBeNull()
-  })
-
-  it('reports the path an export would spawn, and none when the machine has no pandoc', () => {
-    const folder = makeLookupFolder()
-    const binary = path.join(folder, 'pandoc-custom')
-    writeFileSync(binary, '')
-
-    expect(resolvePandocCommand('linux', { MARKTEXT_PANDOC: binary })).toEqual({ command: binary })
-    expect(resolvePandocCommand('linux', { PATH: '/nowhere' })).toEqual({ command: null })
-  })
-
-  // A shell also runs the batch shims this lookup skips, so a pandoc only it can see is still
-  // reported rather than called missing.
-  it('reports a pandoc it cannot name instead of calling it missing', () => {
-    vi.mocked(commandExists.sync).mockReturnValueOnce(true)
-
-    expect(resolvePandocCommand('linux', { PATH: '/nowhere' })).toEqual({
-      command: null,
-      found: true
-    })
   })
 
   // The plain-text writers keep `pics/a.png` as a link, so pandoc copies the pictures along.

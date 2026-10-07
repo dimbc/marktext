@@ -485,7 +485,6 @@
         "description": "Het Pandoc-conversiemenu tonen",
         "detailedDescription": "Vereist een installatie van Pandoc",
         "found": "Gevonden: {path}",
-        "foundNoPath": "Gevonden, maar geen bestand om te noemen",
         "notFound": "Niet gevonden",
         "recheck": "Opnieuw controleren"
       },

@@ -20,9 +20,5 @@ export const pandocSwitchState = (
   if (!probe) return { note: '', path: '', disabled: false }
   const path = probe.command ?? ''
   if (path) return { note: 'preferences.general.pandoc.found', path, disabled: false }
-  // A pandoc no file can be named for is still a pandoc, so it is not "not found".
-  if (probe.found) {
-    return { note: 'preferences.general.pandoc.foundNoPath', path: '', disabled: false }
-  }
   return { note: 'preferences.general.pandoc.notFound', path: '', disabled: !switchOn }
 }

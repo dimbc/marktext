@@ -269,7 +269,7 @@ const pandocStatus = computed<string>(() => {
 
 const pandocDisabled = computed<boolean>(() => pandocSwitch.value.disabled)
 
-/** This pane is the only place the app reports detection, so the answer has to be refreshable. */
+/** The pane is the only place the app reports detection, so the answer has to be refreshable. */
 const probePandoc = async (): Promise<void> => {
   isProbing.value = true
   try {

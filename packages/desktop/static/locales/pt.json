@@ -485,7 +485,6 @@
         "description": "Mostrar o menu de conversão do Pandoc",
         "detailedDescription": "Requer o Pandoc instalado",
         "found": "Encontrado: {path}",
-        "foundNoPath": "Encontrado, mas sem arquivo para indicar",
         "notFound": "Não encontrado",
         "recheck": "Verificar novamente"
       },

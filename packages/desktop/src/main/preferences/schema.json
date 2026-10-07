@@ -45,7 +45,7 @@
   "fileSortBy": {
     "description": "General--Sort files in opened folder by created time, modified time and title.",
     "enum": ["modified", "created", "title"],
-    "default": "created"
+    "default": "modified"
   },
   "fileSortOrder": {
     "description": "General--Sort order for files in opened folders: ascending or descending.",
@@ -93,7 +93,7 @@
   "wrapCodeBlocks": {
     "description": "Editor--Wrap text inside code blocks",
     "type": "boolean",
-    "default": false
+    "default": true
   },
   "editorLineWidth": {
     "description": "Editor--Defines the maximum editor area width. An empty string or suffixes of ch (characters), px (pixels) or % (percentage) are allowed.",
@@ -117,7 +117,7 @@
   "codeBlockLineNumbers": {
     "description": "Editor--Whether to show the line numbers",
     "type": "boolean",
-    "default": false
+    "default": true
   },
   "sourceCodeLineNumbers": {
     "description": "Editor--Show line numbers in source code mode",
@@ -325,7 +325,7 @@
   "followSystemTheme": {
     "description": "Theme--Use separate theme in dark mode.",
     "type": "boolean",
-    "default": true
+    "default": false
   },
   "lightModeTheme": {
     "description": "Theme--Theme to use when system is in light mode.",
@@ -407,14 +407,6 @@
     "description": "General--Show the Pandoc conversion menu. Requires Pandoc to be installed.",
     "type": "boolean",
     "default": false
-  },
-  "treePathExcludePatterns": {
-    "description": "General--Glob patterns to exclude from the sidebar file tree.",
-    "type": "array",
-    "items": {
-      "type": "string"
-    },
-    "default": []
   },
   "searchExclusions": {
     "description": "Searcher--List of glob patterns to exclude from search.--internal",

@@ -485,7 +485,6 @@
         "description": "Pandoc dönüştürme menüsünü göster",
         "detailedDescription": "Pandoc kurulu olmalıdır",
         "found": "Bulundu: {path}",
-        "foundNoPath": "Bulundu, ancak dosya belirtilemiyor",
         "notFound": "Bulunamadı",
         "recheck": "Yeniden Denetle"
       },

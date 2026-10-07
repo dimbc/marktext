@@ -485,7 +485,6 @@
         "description": "Показывать меню конвертации Pandoc",
         "detailedDescription": "Требуется установленный Pandoc",
         "found": "Найден: {path}",
-        "foundNoPath": "Найден, но файл указать нельзя",
         "notFound": "Не найден",
         "recheck": "Проверить снова"
       },

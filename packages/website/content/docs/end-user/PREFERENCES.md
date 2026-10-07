@@ -14,7 +14,7 @@ Preferences can be controlled and modified in the settings window or via the `pr
 | zoom                   | Number  | `1.0`        | The zoom level. Between `0.5` and `2.0` inclusive.                                                     |
 | hideScrollbar          | Boolean | `false`      | Whether to hide scrollbars.                                                                            |
 | wordWrapInToc          | Boolean | `false`      | Whether to enable word wrap in the table of contents.                                                  |
-| fileSortBy             | String  | `created`    | Sort files in the opened folder. Optional values: `created`, `modified`, `title`.                      |
+| fileSortBy             | String  | `modified`   | Sort files in the opened folder. Optional values: `created`, `modified`, `title`.                      |
 | fileSortOrder          | String  | `asc`        | Sort order for files in opened folders: `asc` (ascending) or `desc` (descending).                      |
 | startUpAction          | String  | `restoreAll` | The action when MarkText launches. Optional values: `folder`, `openLastFolder`, `blank`, `restoreAll`. |
 | defaultDirectoryToOpen | String  | `""`         | The path that should be opened when `startUpAction=folder`.                                            |
@@ -22,7 +22,6 @@ Preferences can be controlled and modified in the settings window or via the `pr
 | restoreLayoutState     | Boolean | `true`       | Restore the previous editor state (open tabs, layout) on startup.                                      |
 | openedFilesInSidebar   | Boolean | `true`       | Whether to show the _Opened Files_ subsection inside the sidebar file tree.                            |
 | showPandocConvert      | Boolean | `false`      | Show the Pandoc conversion menu.                                                                       |
-| treePathExcludePatterns | Array of Strings | `[]` | Glob patterns to exclude from the sidebar file tree.                                        |
 
 #### Editor
 
@@ -31,11 +30,11 @@ Preferences can be controlled and modified in the settings window or via the `pr
 | editorFontFamily                   | String  | `Open Sans`        | Editor font family.                                                                                 |
 | fontSize                           | Number  | `16`               | Font size in pixels. Range `12`–`32`.                                                               |
 | lineHeight                         | Number  | `1.6`              | Line height. Range `1.2`–`2.0`.                                                                     |
-| wrapCodeBlocks                     | Boolean | `false`            | Wrap text inside code blocks.                                                                       |
+| wrapCodeBlocks                     | Boolean | `true`             | Wrap text inside code blocks.                                                                       |
 | editorLineWidth                    | String  | `""`               | Maximum editor area width. Empty or a value with a `ch`, `px` or `%` suffix.                        |
 | codeFontSize                       | Number  | `14`               | Font size inside code blocks. Range `12`–`28`.                                                      |
 | codeFontFamily                     | String  | `DejaVu Sans Mono` | Code-block font family.                                                                             |
-| codeBlockLineNumbers               | Boolean | `false`            | Show line numbers inside code blocks.                                                               |
+| codeBlockLineNumbers               | Boolean | `true`             | Show line numbers inside code blocks.                                                               |
 | sourceCodeLineNumbers              | Boolean | `true`             | Show line numbers in source code mode.                                                              |
 | trimUnnecessaryCodeBlockEmptyLines | Boolean | `true`             | Trim the beginning and ending empty lines in code blocks.                                           |
 | autoPairBracket                    | Boolean | `true`             | Auto-close brackets when editing.                                                                   |
@@ -78,7 +77,7 @@ Preferences can be controlled and modified in the settings window or via the `pr
 | Key               | Type    | Default | Description                                                                               |
 | ----------------- | ------- | ------- | ----------------------------------------------------------------------------------------- |
 | theme             | String  | `light` | The current theme id. See [Themes](THEMES.md) for the full list.                          |
-| followSystemTheme | Boolean | `true`  | Follow the system light/dark mode and switch automatically.                               |
+| followSystemTheme | Boolean | `false` | Follow the system light/dark mode and switch automatically.                               |
 | lightModeTheme    | String  | `light` | Theme id used when the system is in light mode (only when `followSystemTheme` is `true`). |
 | darkModeTheme     | String  | `dark`  | Theme id used when the system is in dark mode (only when `followSystemTheme` is `true`).  |
 

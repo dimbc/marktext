@@ -485,7 +485,6 @@
         "description": "显示 Pandoc 转换菜单",
         "detailedDescription": "需要先安装 Pandoc",
         "found": "已找到：{path}",
-        "foundNoPath": "已找到，但无法确定文件",
         "notFound": "未找到",
         "recheck": "重新检测"
       },

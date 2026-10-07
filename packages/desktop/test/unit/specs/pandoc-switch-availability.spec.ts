@@ -9,7 +9,6 @@ const here = dirname(fileURLToPath(import.meta.url))
 const pkg = resolve(here, '../../..')
 
 const INSTALLED: PandocCommandInfo = { command: 'C:\\Program Files\\Pandoc\\pandoc.exe' }
-const UNNAMED: PandocCommandInfo = { command: null, found: true }
 const MISSING: PandocCommandInfo = { command: null }
 
 describe('Pandoc switch availability', () => {
@@ -28,15 +27,6 @@ describe('Pandoc switch availability', () => {
     })
   })
 
-  // A pandoc a shell can run but no file can be named for is still not one to call missing.
-  it('reports a pandoc it cannot name as found, and keeps the switch reachable', () => {
-    expect(pandocSwitchState(UNNAMED, false)).toMatchObject({
-      note: 'preferences.general.pandoc.foundNoPath',
-      path: '',
-      disabled: false
-    })
-  })
-
   it('leaves an enabled switch reachable, so the menu can still be turned off', () => {
     expect(pandocSwitchState(MISSING, true).disabled).toBe(false)
   })
@@ -48,7 +38,7 @@ describe('Pandoc switch availability', () => {
   it('only refers to messages the locale files define', () => {
     const messages = JSON.parse(readFileSync(join(pkg, 'static/locales/en.json'), 'utf8'))
     const general = messages.preferences.general.pandoc as Record<string, string>
-    for (const probe of [INSTALLED, UNNAMED, MISSING]) {
+    for (const probe of [INSTALLED, MISSING]) {
       const { note } = pandocSwitchState(probe, false)
       expect(general[note.split('.').pop() as string]).toBeTypeOf('string')
     }
