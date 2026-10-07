@@ -418,6 +418,7 @@
         "texMathGfm": "Pandocs Markdown-Erweiterung tex_math_gfm aktivieren",
         "texMathSingleBackslash": "Pandocs Markdown-Erweiterung tex_math_single_backslash aktivieren",
         "texMathDoubleBackslash": "Pandocs Markdown-Erweiterung tex_math_double_backslash aktivieren",
+        "highlightSyntax": "Die nicht standardmäßige ==text==-Hervorhebungssyntax aktivieren",
         "isHtmlEnabled": "HTML-Rendering aktivieren",
         "softNewlineAsSpace": "Weiche Zeilenumbrüche als Leerzeichen behandeln",
         "sequenceTheme": "Sequenzdiagramm-Theme",
@@ -656,6 +657,7 @@
         "texMathGfm": "GitHub-TeX-Mathematik ($`…`$ und ```math)",
         "texMathSingleBackslash": "TeX-Mathematik mit einfachem Backslash",
         "texMathDoubleBackslash": "TeX-Mathematik mit doppeltem Backslash",
+        "highlightSyntax": "Hervorhebung (==text==)",
         "frontmatterType": {
           "jsonBrace": "JSON-Klammer",
           "jsonSemicolon": "JSON-Semikolon",
@@ -907,6 +909,7 @@
     "ok": "OK"
   },
   "dialog": {
+    "moveToTrash": "Möchtest du \"{name}\" wirklich in den Papierkorb verschieben?",
     "cancel": "Abbrechen",
     "changesWillBeLost": "Änderungen gehen verloren",
     "close": "Schließen",
@@ -976,6 +979,21 @@
       "title": "Tabelle einfügen",
       "rows": "Zeilen",
       "columns": "Spalten"
+    },
+    "mediaViewer": {
+      "title": "Vorschau",
+      "close": "Schließen",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "fit": "An Fenster anpassen",
+      "actualSize": "Originalgröße",
+      "saveTitle": "Diagramm speichern",
+      "saveSvg": "Als SVG speichern",
+      "savePng": "Als PNG speichern",
+      "copyImage": "Bild kopieren",
+      "copied": "Bild in die Zwischenablage kopiert",
+      "saveFailed": "Bild konnte nicht gespeichert werden: {error}",
+      "copyFailed": "Bild konnte nicht kopiert werden: {error}"
     },
     "notifications": {
       "notificationNotFound": "Benachrichtigung nicht gefunden"

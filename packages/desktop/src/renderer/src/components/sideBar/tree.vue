@@ -5,7 +5,10 @@
     </div>
 
     <!-- Opened tabs -->
-    <div v-if="openedFilesInSidebar" class="opened-files">
+    <div
+      v-if="openedFilesInSidebar"
+      class="opened-files"
+    >
       <div class="title">
         <el-icon
           class="icon-arrow"
@@ -86,7 +89,12 @@
       </div>
       <div
         v-show="showDirectories"
+        ref="treeWrapper"
         class="tree-wrapper"
+        tabindex="0"
+        @mousedown="handleTreeMouseDown"
+        @focusout="handleTreeFocusOut"
+        @keydown="handleTreeKeydown"
       >
         <folder
           v-for="folder of projectTree.folders"
@@ -97,7 +105,7 @@
         <input
           v-show="createCacheDirname === projectTree.pathname"
           ref="input"
-          v-model="createName"
+          v-model="nameInputValue"
           placeholder="Enter .md file name"
           type="text"
           class="new-input"
@@ -149,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useProjectStore } from '@/store/project'
 import { useEditorStore } from '@/store/editor'
@@ -161,6 +169,16 @@ import bus from '../../bus'
 import { showContextMenu } from '../../contextMenu/sideBar'
 import { useI18n } from 'vue-i18n'
 import { ArrowRight } from '@element-plus/icons-vue'
+import { PATH_SEPARATOR } from '@/config'
+import { isMac } from '@/util'
+import {
+  isEditableTarget,
+  isInsideTreeScope,
+  isNameInput,
+  keepsSidebarSelection,
+  shouldTrashSelection
+} from './trashKey'
+import { shouldRenameSelection } from './renameKey'
 import type { TreeNode, TabDescriptor } from './types'
 
 const { t } = useI18n()
@@ -185,8 +203,8 @@ const SHOW_OPENED_FILES_KEY = 'side-bar-show-opened-files'
 const readSectionExpanded = (key: string): boolean => localStorage.getItem(key) !== 'false'
 const showDirectories = ref(readSectionExpanded(SHOW_DIRECTORIES_KEY))
 const showOpenedFiles = ref(readSectionExpanded(SHOW_OPENED_FILES_KEY))
-const createName = ref('')
 const input = ref<HTMLInputElement | null>(null)
+const treeWrapper = ref<HTMLDivElement | null>(null)
 
 const projectStore = useProjectStore()
 const editorStore = useEditorStore()
@@ -195,6 +213,9 @@ const preferencesStore = usePreferencesStore()
 // Computed properties
 const { createCache } = storeToRefs(projectStore)
 const { clipboard } = storeToRefs(projectStore)
+const { activeItem } = storeToRefs(projectStore)
+const { renameCache } = storeToRefs(projectStore)
+const { nameInputValue } = storeToRefs(projectStore)
 const { openedFilesInSidebar } = storeToRefs(preferencesStore)
 
 // The createCache state is `{ dirname, type }` while an input is shown, and
@@ -239,43 +260,112 @@ const handleInputFocus = (): void => {
   nextTick(() => {
     if (input.value) {
       input.value.focus()
-      createName.value = ''
     }
   })
 }
 
 const handleInputEnter = (): void => {
-  projectStore.CREATE_FILE_DIRECTORY(createName.value)
+  projectStore.CREATE_FILE_DIRECTORY(nameInputValue.value)
+}
+
+const focusTree = (): void => {
+  treeWrapper.value?.focus()
+}
+
+// preventDefault stops the browser's default mousedown focus move (to <body>)
+// from undoing the focus() call.
+const handleTreeMouseDown = (event: MouseEvent): void => {
+  if (isEditableTarget(event.target)) return
+  if (event.button === 0) event.preventDefault()
+  focusTree()
+}
+
+// An inline input closing (rename commit / Escape) drops focus to <body>.
+const handleTreeFocusOut = (event: FocusEvent): void => {
+  if (!isNameInput(event.target)) return
+  nextTick(() => {
+    if (document.activeElement === document.body) focusTree()
+  })
+}
+
+const handleDocumentClick = (event: MouseEvent): void => {
+  const { target } = event
+  if (!target) return
+  if (isNameInput(target)) return
+
+  if (isInsideTreeScope(target) && !keepsSidebarSelection(target)) {
+    projectStore.CHANGE_ACTIVE_ITEM({})
+  }
+  projectStore.COMMIT_NAME_INPUT()
+}
+
+const handleDocumentContextMenu = (event: MouseEvent): void => {
+  const { target } = event
+  if (isNameInput(target)) return
+
+  // Right-clicking opens a native menu whose actions read the selection when
+  // clicked, so a rename committed here could leave the menu targeting the old
+  // path. Cancel the pending input instead (the pre-#3207 behaviour); the
+  // click-away path above still commits.
+  projectStore.CLEAR_NAME_INPUT_STATE()
+}
+
+const handleTreeKeydown = (event: KeyboardEvent): void => {
+  const { target, key, metaKey } = event
+  const editableTarget = isEditableTarget(target)
+
+  if (key === 'Escape') {
+    projectStore.CLEAR_NAME_INPUT_STATE()
+    projectStore.CHANGE_ACTIVE_ITEM({})
+  }
+
+  const isEditingName = !!renameCache.value || !!createCacheDirname.value
+  const shouldRename = shouldRenameSelection({
+    key,
+    selection: activeItem.value,
+    projectRootPath: props.projectTree?.pathname,
+    pathSeparator: PATH_SEPARATOR,
+    isEditingName,
+    editableTarget
+  })
+  if (shouldRename) {
+    event.preventDefault()
+    event.stopPropagation()
+    return bus.emit('SIDEBAR::rename')
+  }
+
+  const shouldTrash = shouldTrashSelection({
+    key,
+    metaKey,
+    isMac,
+    selection: activeItem.value,
+    projectRootPath: props.projectTree?.pathname,
+    pathSeparator: PATH_SEPARATOR,
+    isEditingName,
+    editableTarget
+  })
+  if (shouldTrash) {
+    event.preventDefault()
+    event.stopPropagation()
+    return bus.emit('SIDEBAR::remove')
+  }
 }
 
 onMounted(() => {
   bus.on('SIDEBAR::show-new-input', handleInputFocus)
+  bus.on('SIDEBAR::focus-tree', focusTree)
+  // Capture phase: several click targets (project/collapse headings, editor
+  // tabs) call `@click.stop`, which would otherwise keep the click-away commit
+  // from running.
+  document.addEventListener('click', handleDocumentClick, true)
+  document.addEventListener('contextmenu', handleDocumentContextMenu)
+})
 
-  // Hide rename / create inputs on outside clicks. Buttons that open these
-  // inputs must use @click.stop so their click never reaches this listener.
-  document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement | null
-    if (target && target.tagName !== 'INPUT') {
-      projectStore.CHANGE_ACTIVE_ITEM({})
-      projectStore.createCache = {}
-      projectStore.renameCache = null
-    }
-  })
-
-  document.addEventListener('contextmenu', (event) => {
-    const target = event.target as HTMLElement | null
-    if (target && target.tagName !== 'INPUT') {
-      projectStore.createCache = {}
-      projectStore.renameCache = null
-    }
-  })
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      projectStore.createCache = {}
-      projectStore.renameCache = null
-    }
-  })
+onUnmounted(() => {
+  bus.off('SIDEBAR::show-new-input', handleInputFocus)
+  bus.off('SIDEBAR::focus-tree', focusTree)
+  document.removeEventListener('click', handleDocumentClick, true)
+  document.removeEventListener('contextmenu', handleDocumentContextMenu)
 })
 </script>
 
@@ -453,13 +543,25 @@ onMounted(() => {
   margin: 5px 0;
   padding: 0 6px;
   color: var(--sideBarColor);
-  border: 1px solid var(--floatBorderColor);
+  border: 1px solid var(--focusColor);
   background: var(--inputBgColor);
   width: calc(100% - 45px);
   border-radius: 3px;
 }
 .tree-wrapper {
   position: relative;
+}
+.tree-wrapper:focus-visible {
+  outline: none;
+}
+.tree-wrapper:focus-within :deep(.side-bar-file.active),
+.tree-wrapper:focus-within :deep(.folder-name.active) {
+  outline: 1px solid var(--focusColor);
+  outline-offset: -1px;
+}
+.tree-wrapper:not(:focus-within) :deep(.side-bar-file.active),
+.tree-wrapper:not(:focus-within) :deep(.folder-name.active) {
+  background: color-mix(in srgb, var(--themeColor20) 55%, transparent);
 }
 .empty-project {
   font-size: 14px;

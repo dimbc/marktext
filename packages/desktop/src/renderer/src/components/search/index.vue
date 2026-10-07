@@ -2,7 +2,6 @@
   <div
     v-show="showSearch"
     class="search-bar"
-    @click.stop="noop"
   >
     <div
       class="left-arrow"
@@ -36,7 +35,7 @@
               :title="t('search.caseSensitive')"
               class="is-case-sensitive"
               :class="{ active: isCaseSensitive }"
-              @click.stop="toggleCtrl('isCaseSensitive')"
+              @click="toggleCtrl('isCaseSensitive')"
             >
               <FindCaseIcon aria-hidden="true" />
             </span>
@@ -44,7 +43,7 @@
               :title="t('search.wholeWord')"
               class="is-whole-word"
               :class="{ active: isWholeWord }"
-              @click.stop="toggleCtrl('isWholeWord')"
+              @click="toggleCtrl('isWholeWord')"
             >
               <FindWordIcon aria-hidden="true" />
             </span>
@@ -52,7 +51,7 @@
               :title="t('search.useRegex')"
               class="is-regex"
               :class="{ active: isRegexp }"
-              @click.stop="toggleCtrl('isRegexp')"
+              @click="toggleCtrl('isRegexp')"
             >
               <FindRegexIcon aria-hidden="true" />
             </span>
@@ -67,7 +66,7 @@
         <div class="button-group">
           <button
             class="button right"
-            @click="find('prev')"
+            @click="find('previous')"
           >
             <el-icon :size="14">
               <ArrowUp />
@@ -269,7 +268,7 @@ const listenFindNext = () => {
 }
 
 const listenFindPrev = () => {
-  find('prev')
+  find('previous')
 }
 
 const docKeyup = (event: KeyboardEvent) => {
@@ -278,8 +277,12 @@ const docKeyup = (event: KeyboardEvent) => {
   }
 }
 
-const docClick = () => {
+const docClick = (event: MouseEvent) => {
   if (!showSearch.value) return
+  // Replaces the @click.stop that used to swallow these clicks from every other
+  // document-level listener.
+  const target = event.target as HTMLElement | null
+  if (target && target.closest('.search-bar')) return
   emptySearch(true)
 }
 
@@ -298,11 +301,8 @@ const toggleSearchType = () => {
   type.value = type.value === 'search' ? 'replace' : 'search'
 }
 
-/**
- * Find the previous or next search result.
- * action: prev or next
- */
-const find = (action: 'prev' | 'next') => {
+/** Find the previous or next search result. */
+const find = (action: 'previous' | 'next') => {
   bus.emit('find-action', action)
 }
 
@@ -358,8 +358,6 @@ const replace = (isSingle = true) => {
     }
   })
 }
-
-const noop = () => {}
 </script>
 
 <style scoped>

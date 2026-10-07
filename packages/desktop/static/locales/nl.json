@@ -417,6 +417,7 @@
         "texMathGfm": "Pandocs markdown-extensie tex_math_gfm inschakelen",
         "texMathSingleBackslash": "Pandocs markdown-extensie tex_math_single_backslash inschakelen",
         "texMathDoubleBackslash": "Pandocs markdown-extensie tex_math_double_backslash inschakelen",
+        "highlightSyntax": "De niet-standaard ==tekst==-markeringssyntaxis inschakelen",
         "isHtmlEnabled": "HTML-weergave inschakelen",
         "softNewlineAsSpace": "Zachte regeleinden als spaties behandelen",
         "sequenceTheme": "Sequentiediagram thema",
@@ -656,6 +657,7 @@
         "texMathGfm": "GitHub TeX-wiskunde ($`…`$ en ```math)",
         "texMathSingleBackslash": "TeX-wiskunde met enkele backslash",
         "texMathDoubleBackslash": "TeX-wiskunde met dubbele backslash",
+        "highlightSyntax": "Markeren (==tekst==)",
         "frontmatterType": {
           "jsonBrace": "JSON met accolades",
           "jsonSemicolon": "JSON met puntkomma",
@@ -907,6 +909,7 @@
     "ok": "OK"
   },
   "dialog": {
+    "moveToTrash": "Weet je zeker dat je \"{name}\" naar de prullenbak wilt verplaatsen?",
     "cancel": "Annuleren",
     "changesWillBeLost": "Wijzigingen gaan verloren",
     "close": "Sluiten",
@@ -976,6 +979,21 @@
       "title": "Tabel invoegen",
       "rows": "Rijen",
       "columns": "Kolommen"
+    },
+    "mediaViewer": {
+      "title": "Voorbeeld",
+      "close": "Sluiten",
+      "zoomIn": "Inzoomen",
+      "zoomOut": "Uitzoomen",
+      "fit": "Passend maken",
+      "actualSize": "Werkelijke grootte",
+      "saveTitle": "Diagram opslaan",
+      "saveSvg": "Opslaan als SVG",
+      "savePng": "Opslaan als PNG",
+      "copyImage": "Afbeelding kopiëren",
+      "copied": "Afbeelding naar het klembord gekopieerd",
+      "saveFailed": "Kan de afbeelding niet opslaan: {error}",
+      "copyFailed": "Kan de afbeelding niet kopiëren: {error}"
     },
     "notifications": {
       "notificationNotFound": "Melding niet gevonden"

@@ -33,7 +33,7 @@
       </template>
       <template #children>
         <cur-select
-          v-if="!isOsx"
+          v-if="!isMac"
           :description="t('preferences.general.window.titleBarStyle.title')"
           :notes="t('preferences.general.window.requiresRestart')"
           :value="titleBarStyle"
@@ -225,7 +225,7 @@ import Bool from '../common/bool/index.vue'
 import textBox from '../common/textBox/index.vue'
 import { pandocSwitchState } from './pandoc'
 import type { PandocCommandInfo } from '@shared/types/pandoc'
-import { isOsx } from '@/util'
+import { isMac } from '@/util'
 
 import {
   getTitleBarStyleOptions,

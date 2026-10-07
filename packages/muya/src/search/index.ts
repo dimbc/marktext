@@ -2,7 +2,7 @@ import type Content from '../block/base/content';
 import type TreeNode from '../block/base/treeNode';
 import type { IHighlight } from '../inlineRenderer/types';
 import type { Muya } from '../muya';
-import type { IMatch } from './types';
+import type { IMatch, IReplaceOption, ISearchOption } from './types';
 import { DEFAULT_SEARCH_OPTIONS } from '../config';
 import { buildRegexValue, matchString } from '../utils/search';
 
@@ -29,7 +29,9 @@ export class Search {
         this.index = -1;
     }
 
-    private _updateMatches(isClear = false) {
+    // `blocks` limits the re-render to those blocks; omitted, every block with
+    // a match is re-rendered.
+    private _updateMatches(isClear = false, blocks?: Set<Content>) {
         const { matches, index } = this;
         let i;
         const len = matches.length;
@@ -37,6 +39,9 @@ export class Search {
 
         for (i = 0; i < len; i++) {
             const { block, start, end } = matches[i];
+            if (blocks && !blocks.has(block))
+                continue;
+
             const active = i === index;
             const highlight: IHighlight = { start, end, active };
             const highlights = matchesMap.get(block);
@@ -93,7 +98,7 @@ export class Search {
         lastBlock.text = tempText + lastBlock.text.substring(lastEnd);
     }
 
-    replace(replaceValue: string, opt = { isSingle: true, isRegexp: false }) {
+    replace(replaceValue: string, opt: IReplaceOption = { isSingle: true, isRegexp: false }) {
         const { isSingle, isRegexp, ...rest } = opt;
         const options = Object.assign({}, DEFAULT_SEARCH_OPTIONS, rest);
         const { matches, index } = this;
@@ -135,10 +140,17 @@ export class Search {
         if (index >= len)
             index = 0;
 
+        // Moving the active match only changes the blocks holding the old and
+        // the new one.
+        const changed = new Set<Content>([matches[index].block]);
+        const prev = matches[this.index];
+        if (prev)
+            changed.add(prev.block);
+
         this.index = index;
 
-        this._updateMatches(true);
-        this._updateMatches();
+        this._updateMatches(true, changed);
+        this._updateMatches(false, changed);
 
         return this;
     }
@@ -148,7 +160,7 @@ export class Search {
      * @param {string} value
      * @param {object} opts
      */
-    search(value: string, opts = {}) {
+    search(value: string, opts: ISearchOption = {}) {
         const matches: IMatch[] = [];
         const options = Object.assign({}, DEFAULT_SEARCH_OPTIONS, opts);
         const { highlightIndex, selectHighlight } = options;

@@ -11,10 +11,12 @@ export const editor = {
     // Editor root carries this class while focus mode is enabled (toggled by
     // `Muya#setFocusMode` / applied at construction for `focusMode: true`).
     focusModeRoot: '.mu-editor.mu-focus-mode',
+    content: 'span.mu-content',
     paragraph: '.mu-paragraph',
     // The editable leaf inside a paragraph. Carries the quick-insert hints as
     // `::after` content, gated on the `placeholder` / `empty-hint` attributes.
     paragraphContent: '.mu-paragraph-content',
+    listItem: '.mu-list-item',
     atxHeading: '.mu-atx-heading',
     setextHeading: '.mu-setext-heading',
     // A Shift+Enter soft line break inside a Format leaf renders as a
@@ -22,6 +24,7 @@ export const editor = {
     // packages/muya/src/inlineRenderer/renderer/softLineBreak.ts +
     // CLASS_NAMES.MU_SOFT_LINE_BREAK in packages/muya/src/config/index.ts.
     softLineBreak: '.mu-soft-line-break',
+    hardLineBreakSpace: '.mu-hard-line-break-space',
     blockQuote: '.mu-block-quote',
     bulletList: '.mu-bullet-list',
     orderList: '.mu-order-list',
@@ -81,6 +84,7 @@ export const editor = {
     // Inline html tags wrap their children with `.mu-raw-html`. The tag itself
     // is the actual `<u>`, `<mark>`, `<sup>`, `<sub>` or `<ruby>` element.
     rawHtml: '.mu-raw-html',
+    htmlTagMarker: 'span.mu-html-tag',
 } as const;
 
 // Float root class names confirmed against the `const name = 'mu-...'` lines
@@ -115,6 +119,11 @@ export const floats = {
 /** Slash-menu item locator: `[data-label="atx-heading 1"]` etc. */
 export function quickInsertItem(label: string): string {
     return `${floats.quickInsert} [data-label="${label}"]`;
+}
+
+/** Preview toolbar action locator: `edit` / `delete` / `view`. */
+export function previewToolBarItem(type: string): string {
+    return `${floats.previewToolBar} li.item.${type}`;
 }
 
 /**

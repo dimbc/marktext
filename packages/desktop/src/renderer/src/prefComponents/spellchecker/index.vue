@@ -91,7 +91,7 @@ import { storeToRefs } from 'pinia'
 import Compound from '../common/compound/index.vue'
 import CurSelect from '../common/select/index.vue'
 import Bool from '../common/bool/index.vue'
-import { isOsx as checkIsOsx } from '@/util'
+import { isMac as checkIsOsx } from '@/util'
 import { SpellChecker } from '@/spellchecker'
 import { getLanguageName } from '@/spellchecker/languageMap'
 import notice from '@/services/notification'
@@ -265,10 +265,6 @@ const handleDeleteClick = (selectedItem: CustomDictionaryWord): void => {
 .pref-spellchecker li.el-select-dropdown__item {
   color: var(--editorColor);
   height: 30px;
-}
-.pref-spellchecker li.el-select-dropdown__item.hover,
-li.el-select-dropdown__item:hover {
-  background: var(--floatHoverColor);
 }
 .pref-spellchecker div.el-select-dropdown {
   background: var(--floatBgColor);

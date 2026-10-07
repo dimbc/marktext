@@ -6,25 +6,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, markRaw, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, shallowRef, markRaw, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useEditorStore } from '@/store/editor'
 import { usePreferencesStore } from '@/store/preferences'
 import { findMarkdownHeadingLine, scrollSourceEditorToLine } from '@/util/sourceModeToc'
 import { storeToRefs } from 'pinia'
+import type CodeMirror from 'codemirror'
 import codeMirror, { setCursorAtFirstLine, setTextDirection } from '../../codeMirror'
 import { wordCount as getWordCount } from '@muyajs/core'
 import { adjustCursor } from '../../util'
 import bus from '../../bus'
 import { oneDarkThemes, railscastsThemes } from '@/config'
 
-// CodeMirror 5 ships no first-party types; the wrapper in src/renderer/src/
-// codeMirror/index.ts also keeps the surface intentionally loose.
-type CMInstance = any
-type CMCursor = any
-
 interface MuyaIndexCursorLike {
-  anchor: CMCursor
-  focus: CMCursor
+  anchor: CodeMirror.Position
+  focus: CodeMirror.Position
 }
 
 const props = defineProps<{
@@ -38,7 +34,7 @@ const preferencesStore = usePreferencesStore()
 
 const sourceCodeContainer = ref<HTMLDivElement | null>(null)
 
-const editor = ref<CMInstance>(null)
+const editor = shallowRef<CodeMirror.Editor | null>(null)
 const commitTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const viewDestroyed = ref(false)
 const tabId = ref<string | null>(null)
@@ -86,12 +82,12 @@ watch([texMathDollars, texMathGfm, texMathSingleBackslash, texMathDoubleBackslas
   editor.value?.setOption('mode', markdownMathMode())
 })
 
-const getMarkdownAndCursor = (cm: CMInstance) => {
+const getMarkdownAndCursor = (cm: CodeMirror.Editor) => {
   let focus = cm.getCursor('head')
   let anchor = cm.getCursor('anchor')
 
   const markdown: string = cm.getValue()
-  const convertToMuyaCursor = (cursor: CMCursor) => {
+  const convertToMuyaCursor = (cursor: CodeMirror.Position) => {
     const line = cm.getLine(cursor.line)
     const preLine = cm.getLine(cursor.line - 1)
     const nextLine = cm.getLine(cursor.line + 1)
@@ -126,7 +122,7 @@ const getMarkdownAndCursor = (cm: CMInstance) => {
  */
 const prepareTabSwitch = () => {
   if (commitTimer.value) clearTimeout(commitTimer.value)
-  if (tabId.value) {
+  if (tabId.value && editor.value) {
     const { cursor, markdown: newMarkdown } = getMarkdownAndCursor(editor.value)
     editorStore.LISTEN_FOR_CONTENT_CHANGE({
       id: tabId.value,
@@ -206,12 +202,6 @@ const handleFileChange = (payload: unknown) => {
   }
 }
 
-const handleInvalidateImageCache = () => {
-  if (editor.value) {
-    editor.value.invalidateImageCache()
-  }
-}
-
 const handleSelectAll = () => {
   if (!sourceCode.value) {
     return
@@ -258,10 +248,13 @@ interface ImageActionPayload {
 }
 
 const handleImageAction = (payload: unknown) => {
+  const cm = editor.value
+  if (!cm) return
+
   const { id, result, alt } = payload as ImageActionPayload
-  const value: string = editor.value.getValue()
-  const focus = editor.value.getCursor('focus')
-  const anchor = editor.value.getCursor('anchor')
+  const value: string = cm.getValue()
+  const focus = cm.getCursor('focus')
+  const anchor = cm.getCursor('anchor')
   const lines: string[] = value.split('\n')
   const index = lines.findIndex((line: string) => line.indexOf(id) > 0)
 
@@ -269,7 +262,7 @@ const handleImageAction = (payload: unknown) => {
     const oldLine = lines[index]
     lines[index] = oldLine.replace(new RegExp(`!\\[${id}\\]\\(.*\\)`), `![${alt}](${result})`)
     const newValue = lines.join('\n')
-    editor.value.setValue(newValue)
+    cm.setValue(newValue)
     const match = /(!\[.*\]\(.*\))/.exec(oldLine)
     if (!match) {
       // t('editor.sourceCode.imageStructureDeletedComment')
@@ -281,7 +274,7 @@ const handleImageAction = (payload: unknown) => {
     }
     const delta = alt.length + result.length + 5 - match[1].length
 
-    const adjustPointer = (pointer: CMCursor) => {
+    const adjustPointer = (pointer: CodeMirror.Position) => {
       if (!pointer) {
         return
       }
@@ -300,9 +293,9 @@ const handleImageAction = (payload: unknown) => {
     adjustPointer(focus)
     adjustPointer(anchor)
     if (focus && anchor) {
-      editor.value.setSelection(anchor, focus, { scroll: true })
+      cm.setSelection(anchor, focus, { scroll: true })
     } else {
-      setCursorAtFirstLine(editor.value)
+      setCursorAtFirstLine(cm)
     }
   }
 }
@@ -311,27 +304,25 @@ const handleImageAction = (payload: unknown) => {
 // than on `getSelection()`, which copies the whole selection.
 let lastSelectionKey = ''
 
-const selectionKey = (cm: CMInstance): string =>
-  (cm?.listSelections?.() ?? [])
-    .map(
-      ({ anchor, head }: { anchor: { line: number; ch: number }; head: { line: number; ch: number } }) =>
-        `${anchor.line}:${anchor.ch}-${head.line}:${head.ch}`
-    )
+const selectionKey = (cm: CodeMirror.Editor): string =>
+  cm
+    .listSelections()
+    .map(({ anchor, head }) => `${anchor.line}:${anchor.ch}-${head.line}:${head.ch}`)
     .join(',')
 
-const updateSelectionWordCount = (cm: CMInstance) => {
+const updateSelectionWordCount = (cm: CodeMirror.Editor) => {
   const key = selectionKey(cm)
   if (key === lastSelectionKey && editorStore.selectionWordCount != null) return
   lastSelectionKey = key
 
-  const selectedText = cm?.getSelection?.('\n') ?? ''
+  const selectedText = cm.getSelection()
   const hasSelection = selectedText.trim().length > 0
   if (!hasSelection && editorStore.selectionWordCount == null) return
 
   editorStore.SET_SELECTION_WORD_COUNT(hasSelection ? getWordCount(selectedText) : null)
 }
 
-const saveContent = (cm: CMInstance) => {
+const saveContent = (cm: CodeMirror.Editor) => {
   const { cursor, markdown: newMarkdown } = getMarkdownAndCursor(cm)
   // Attention: the cursor may be `{focus: null, anchor: null}` when press `backspace`
   const wordCount = getWordCount(newMarkdown)
@@ -351,10 +342,10 @@ const saveContent = (cm: CMInstance) => {
   }
 }
 
-const listenChange = () => {
-  editor.value.on('cursorActivity', (cm: CMInstance) => {
-    saveContent(cm)
-    updateSelectionWordCount(cm)
+const listenChange = (cm: CodeMirror.Editor) => {
+  cm.on('cursorActivity', (instance: CodeMirror.Editor) => {
+    saveContent(instance)
+    updateSelectionWordCount(instance)
   })
 }
 
@@ -401,7 +392,6 @@ onMounted(() => {
   }
 
   bus.on('file-loaded', handleFileChange)
-  bus.on('invalidate-image-cache', handleInvalidateImageCache)
   bus.on('file-changed', handleFileChange)
   bus.on('selectAll', handleSelectAll)
   bus.on('undo', handleUndo)
@@ -415,7 +405,7 @@ onMounted(() => {
   // See src/renderer/src/codeMirror/markdownMathMode.ts.
   codeMirrorInstance.setOption('mode', markdownMathMode())
 
-  codeMirrorInstance.on('contextmenu', (_cm: CMInstance, event: Event) => {
+  codeMirrorInstance.on('contextmenu', (_cm: CodeMirror.Editor, event: Event) => {
     event.preventDefault()
     event.stopPropagation()
   })
@@ -431,7 +421,7 @@ onMounted(() => {
   tabId.value = id
   updateSelectionWordCount(codeMirrorInstance)
 
-  listenChange()
+  listenChange(codeMirrorInstance)
 })
 
 onBeforeUnmount(() => {
@@ -439,7 +429,6 @@ onBeforeUnmount(() => {
   if (commitTimer.value) clearTimeout(commitTimer.value)
 
   bus.off('file-loaded', handleFileChange)
-  bus.off('invalidate-image-cache', handleInvalidateImageCache)
   bus.off('file-changed', handleFileChange)
   bus.off('selectAll', handleSelectAll)
   bus.off('undo', handleUndo)
@@ -449,13 +438,15 @@ onBeforeUnmount(() => {
   lastSelectionKey = ''
   bus.off('scroll-to-header', handleScrollToHeader)
 
-  const { cursor, markdown: newMarkdown } = getMarkdownAndCursor(editor.value)
-  bus.emit('file-changed', {
-    id: tabId.value,
-    markdown: newMarkdown,
-    muyaIndexCursor: cursor,
-    renderCursor: true
-  })
+  if (editor.value) {
+    const { cursor, markdown: newMarkdown } = getMarkdownAndCursor(editor.value)
+    bus.emit('file-changed', {
+      id: tabId.value,
+      markdown: newMarkdown,
+      muyaIndexCursor: cursor,
+      renderCursor: true
+    })
+  }
 })
 </script>
 

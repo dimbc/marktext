@@ -417,6 +417,7 @@
         "texMathGfm": "Enable pandoc's markdown extension tex_math_gfm",
         "texMathSingleBackslash": "Enable pandoc's markdown extension tex_math_single_backslash",
         "texMathDoubleBackslash": "Enable pandoc's markdown extension tex_math_double_backslash",
+        "highlightSyntax": "Enable the non-standard ==text== highlight syntax",
         "isHtmlEnabled": "Enable HTML rendering",
         "softNewlineAsSpace": "Treat soft newlines as spaces",
         "sequenceTheme": "Sequence diagram theme",
@@ -656,6 +657,7 @@
         "texMathGfm": "GitHub TeX math ($`…`$ and ```math)",
         "texMathSingleBackslash": "TeX math with single-backslash delimiters",
         "texMathDoubleBackslash": "TeX math with double-backslash delimiters",
+        "highlightSyntax": "Highlight (==text==)",
         "frontmatterType": {
           "jsonBrace": "JSON with Braces",
           "jsonSemicolon": "JSON with Semicolon",
@@ -907,6 +909,7 @@
     "ok": "OK"
   },
   "dialog": {
+    "moveToTrash": "Are you sure you want to move \"{name}\" to trash?",
     "cancel": "Cancel",
     "changesWillBeLost": "Changes will be lost",
     "close": "Close",
@@ -976,6 +979,21 @@
       "title": "Insert Table",
       "rows": "Rows",
       "columns": "Columns"
+    },
+    "mediaViewer": {
+      "title": "Preview",
+      "close": "Close",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "fit": "Fit to window",
+      "actualSize": "Actual size",
+      "saveTitle": "Save diagram",
+      "saveSvg": "Save as SVG",
+      "savePng": "Save as PNG",
+      "copyImage": "Copy image",
+      "copied": "Image copied to the clipboard",
+      "saveFailed": "Could not save the image: {error}",
+      "copyFailed": "Could not copy the image: {error}"
     },
     "notifications": {
       "notificationNotFound": "Notification not found"

@@ -25,6 +25,7 @@ import pandoc, {
   formatLinksMedia,
   getPandocLanguage,
   getPandocReader,
+  getReaderExtensions,
   listLinkedMedia,
   shouldMirrorMedia
 } from '../../utils/pandoc'
@@ -184,11 +185,20 @@ const handlePandocExport = async(e: IpcMainEvent, payload: PandocExportPayload):
     return
   }
 
-  const { markdown, title, pathname, superSubScript, footnote } = payload
+  const {
+    markdown,
+    title,
+    pathname,
+    superSubScript,
+    footnote,
+    texMathDollars,
+    texMathGfm,
+    texMathSingleBackslash,
+    texMathDoubleBackslash
+  } = payload
   // The save dialog and pandoc's link resolution both need the document's folder.
   const sourceDir = pathname ? path.dirname(pathname) : undefined
   const stem = sanitizeFilename(pathname ? path.basename(pathname, path.extname(pathname)) : title)
-  const reader = getPandocReader(superSubScript === true, footnote === true)
   let filePath = ''
   // Awaited inside the try, so a save the OS refuses becomes a notification.
   try {
@@ -199,6 +209,19 @@ const handlePandocExport = async(e: IpcMainEvent, payload: PandocExportPayload):
     if (canceled || !chosen || win.isDestroyed()) return
     // What comes back is the user's answer, "replace this one" included.
     filePath = chosen
+    // The reader is built once the export is certain: naming `tex_math_gfm` needs pandoc
+    // to have answered `--list-extensions`, and a cancelled dialog should not pay for it.
+    const reader = getPandocReader(
+      {
+        superSubScript: superSubScript === true,
+        footnotes: footnote === true,
+        texMathDollars: texMathDollars === true,
+        texMathGfm: texMathGfm === true,
+        texMathSingleBackslash: texMathSingleBackslash === true,
+        texMathDoubleBackslash: texMathDoubleBackslash === true
+      },
+      await getReaderExtensions()
+    )
     // The plain-text writers keep images as links, so the pictures are mirrored along.
     const linksMedia = formatLinksMedia(format.target)
     const media = linksMedia ? await listLinkedMedia(markdown, reader) : []
@@ -368,8 +391,7 @@ const noticePandocNotFound = (win: BrowserWindow, titleKey = 'dialog.importWarni
 
 const openPandocFile = async(windowId: number, pathname: string): Promise<void> => {
   try {
-    const converter = pandoc(pathname, 'markdown')
-    const data = await converter()
+    const data = await pandoc(pathname, 'markdown')
     ipcMain.emit('app-open-markdown-by-id', windowId, data)
   } catch (err) {
     log.error('Error while converting file:', err)
@@ -577,7 +599,7 @@ ipcMain.on('mt::window::drop', async(e, fileList: string[]) => {
 
     // Try to import the file
     if (PANDOC_EXTENSIONS.some((ext: string) => file.endsWith(ext))) {
-      const existsPandoc = pandoc.exists()
+      const existsPandoc = await pandoc.exists()
       if (!existsPandoc) {
         noticePandocNotFound(win)
       } else {
@@ -788,9 +810,9 @@ export const exportFile = (win: Win, type: string): void => {
 
 // Convert the current document with pandoc. Unlike `exportFile` (HTML/PDF in the renderer)
 // this needs the markdown source and a file target, which the reply carries.
-export const exportWithPandoc = (win: Win, target: string): void => {
+export const exportWithPandoc = async(win: Win, target: string): Promise<void> => {
   if (!win || !win.webContents) return
-  if (!pandoc.exists()) return noticePandocNotFound(win, 'dialog.exportWarning')
+  if (!(await pandoc.exists())) return noticePandocNotFound(win, 'dialog.exportWarning')
   win.webContents.send('mt::export-with-pandoc', target)
 }
 
@@ -798,7 +820,7 @@ export const importFile = async(win: BrowserWindow | null): Promise<void> => {
   if (!win) {
     return
   }
-  const existsPandoc = pandoc.exists()
+  const existsPandoc = await pandoc.exists()
 
   if (!existsPandoc) {
     noticePandocNotFound(win)

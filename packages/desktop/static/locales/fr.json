@@ -418,6 +418,7 @@
         "texMathGfm": "Activer l'extension markdown de pandoc tex_math_gfm",
         "texMathSingleBackslash": "Activer l'extension markdown de pandoc tex_math_single_backslash",
         "texMathDoubleBackslash": "Activer l'extension markdown de pandoc tex_math_double_backslash",
+        "highlightSyntax": "Activer la syntaxe de surlignage non standard ==texte==",
         "isHtmlEnabled": "Activer le rendu HTML",
         "softNewlineAsSpace": "Traiter les sauts de ligne simples comme des espaces",
         "sequenceTheme": "Thème du diagramme de séquence",
@@ -656,6 +657,7 @@
         "texMathGfm": "Maths TeX de GitHub ($`…`$ et ```math)",
         "texMathSingleBackslash": "Maths TeX avec barre oblique inverse simple",
         "texMathDoubleBackslash": "Maths TeX avec barre oblique inverse double",
+        "highlightSyntax": "Surlignage (==texte==)",
         "frontmatterType": {
           "jsonBrace": "Accolade JSON",
           "jsonSemicolon": "Point-virgule JSON",
@@ -907,6 +909,7 @@
     "ok": "OK"
   },
   "dialog": {
+    "moveToTrash": "Voulez-vous vraiment déplacer « {name} » vers la corbeille ?",
     "cancel": "Annuler",
     "changesWillBeLost": "Les modifications seront perdues",
     "close": "Fermer",
@@ -976,6 +979,21 @@
       "title": "Insérer un tableau",
       "rows": "Lignes",
       "columns": "Colonnes"
+    },
+    "mediaViewer": {
+      "title": "Aperçu",
+      "close": "Fermer",
+      "zoomIn": "Zoom avant",
+      "zoomOut": "Zoom arrière",
+      "fit": "Ajuster à la fenêtre",
+      "actualSize": "Taille réelle",
+      "saveTitle": "Enregistrer le diagramme",
+      "saveSvg": "Enregistrer en SVG",
+      "savePng": "Enregistrer en PNG",
+      "copyImage": "Copier l'image",
+      "copied": "Image copiée dans le presse-papiers",
+      "saveFailed": "Impossible d'enregistrer l'image : {error}",
+      "copyFailed": "Impossible de copier l'image : {error}"
     },
     "notifications": {
       "notificationNotFound": "Notification introuvable"

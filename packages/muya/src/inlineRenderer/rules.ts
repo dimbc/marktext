@@ -2,7 +2,12 @@ import { escapeCharacters } from '../config/escapeCharacter';
 
 export const beginRules = {
     hr: /^(\*{3,}|-{3,}|_{3,})$/,
-    code_fence: /^(`{3,})([^`]*)$/,
+    // Backtick fences may not carry a backtick in their info string, while
+    // tilde fences may carry either fence character (CommonMark §4.5) — hence
+    // the asymmetric info-string classes. `consumeBeginRules` reads the marker
+    // and content from whichever alternative matched.
+    // eslint-disable-next-line regexp/no-super-linear-backtracking
+    code_fence: /^(`{3,})([^`]*)$|^(~{3,})(.*)$/,
     header: /(^ {0,3}#{1,6}(\s+|$))/,
     reference_definition:
     // eslint-disable-next-line regexp/no-super-linear-backtracking, regexp/no-misleading-capturing-group
@@ -19,8 +24,6 @@ export const endRules = {
 export type BeginRules = typeof beginRules;
 
 export const commonMarkRules = {
-    strong: /^(\*\*|__)(?=\S)([\s\S]*?[^\s\\])(\\*)\1(?!(\*|_))/, // can nest
-    em: /^(\*|_)(?=\S)([\s\S]*?[^\s*\\])(\\*)\1(?!\1)/, // can nest
     // Hand-tuned CommonMark/GFM patterns. Disabling the ReDoS-class regexp/*
     // rules here on each line they fire: rewriting these patterns to please
     // the linter would risk parser regressions, and the input is the user's
@@ -99,10 +102,23 @@ export const inlineExtensionRules = {
     // This is not the best regexp, because it not support `2^2\\^`.
     superscript: /^(\^)((?:[^^\s]|(?<=\\)\1|(?<=\\) )+?)(?<!\\)\1(?!\1)/,
     subscript: /^(~)((?:[^~\s]|(?<=\\)\1|(?<=\\) )+?)(?<!\\)\1(?!\1)/,
+    // eslint-disable-next-line regexp/no-super-linear-backtracking
+    mark: /^(={2})(?=\S)([\s\S]*?\S)(\\*)\1/,
     footnote_identifier: /^(\[\^)([^^[\]\s]+)(?<!\\)\]/,
 };
 
 export type InlineExtensionRules = typeof inlineExtensionRules;
+
+// The two backslash math extensions and the option each rule answers to. The
+// double-backslash rules are listed first for intent only: the two openers are
+// mutually exclusive at a given position, `\\(` carrying a backslash where `\(`
+// carries the parenthesis, so neither can shadow the other.
+export const BACKSLASH_MATH_RULES = [
+    ['inline_math_double_backslash', 'texMathDoubleBackslash'],
+    ['display_math_double_backslash', 'texMathDoubleBackslash'],
+    ['inline_math_single_backslash', 'texMathSingleBackslash'],
+    ['display_math_single_backslash', 'texMathSingleBackslash'],
+] as const;
 
 export const inlineRules = {
     ...endRules,
@@ -114,8 +130,6 @@ export const inlineRules = {
 export type InlineRules = typeof inlineRules;
 
 const EXCLUDE_KEYS = [
-    'em',
-    'strong',
     'tail_header',
     'backlash',
     'superscript',
@@ -125,11 +139,11 @@ const EXCLUDE_KEYS = [
 
 type InlineRuleKeys = keyof InlineRules;
 
-type ValidateRules = {
+type EmojiValidateRules = {
     [keys in Exclude<InlineRuleKeys, typeof EXCLUDE_KEYS[number]>]: RegExp
 };
 
-export const validateRules: ValidateRules = (Object.keys(inlineRules) as InlineRuleKeys[]).reduce((acc, key) => {
+export const emojiValidateRules: EmojiValidateRules = (Object.keys(inlineRules) as InlineRuleKeys[]).reduce((acc, key) => {
     // work around with TypeScript type: https://stackoverflow.com/questions/56565528/typescript-const-assertions-how-to-use-array-prototype-includes
     if ((EXCLUDE_KEYS as ReadonlyArray<string>).includes(key)) {
         return acc;
@@ -140,7 +154,7 @@ export const validateRules: ValidateRules = (Object.keys(inlineRules) as InlineR
             [key]: inlineRules[key],
         };
     }
-}, {} as ValidateRules);
+}, {} as EmojiValidateRules);
 
 // Veto set used when validating a tentative `[text](url)` / reference link.
 // Per CommonMark §6.6 only code spans, raw HTML tags and `<...>` autolinks bind

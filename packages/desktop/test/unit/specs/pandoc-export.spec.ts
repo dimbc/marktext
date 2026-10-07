@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const spawnMock = vi.fn()
 
@@ -26,27 +26,67 @@ import pandoc, {
   formatLinksMedia,
   getPandocLanguage,
   getPandocReader,
+  getReaderExtensions,
   isRemoteMedia,
   listLinkedMedia,
+  listReaderExtensions,
   pandocLocations,
   resolvePandocCommand,
   shouldMirrorMedia,
+  type PandocReaderExtensions,
   type PandocToFileOptions
 } from 'main_renderer/utils/pandoc'
 
-/** The ChildProcess `spawn` would hand back; stdin is an emitter so the EPIPE is testable. */
+/** A stand-in for `--list-extensions`: gfm's set plus the extras `markdown` turns on. */
+const EXTENSIONS: PandocReaderExtensions = {
+  gfm: new Map([
+    ['pipe_tables', true],
+    ['strikeout', true],
+    ['footnotes', true],
+    ['tex_math_dollars', true],
+    ['tex_math_gfm', true],
+    ['superscript', false],
+    ['subscript', false]
+  ]),
+  markdown: new Map([
+    ['pipe_tables', true],
+    ['strikeout', true],
+    ['footnotes', true],
+    ['tex_math_dollars', true],
+    ['tex_math_single_backslash', false],
+    ['tex_math_double_backslash', false],
+    ['superscript', true],
+    ['subscript', true],
+    ['smart', true],
+    ['fenced_divs', true]
+  ])
+}
+
+/**
+ * The ChildProcess `spawn` would hand back; stdin is an emitter so the EPIPE is
+ * testable. The command is resolved before the spawn, so `spawned` says when
+ * the stub is actually in use rather than polling for it.
+ */
 const startProcess = () => {
+  let inUse!: () => void
+  const spawned = new Promise<void>((resolve) => {
+    inUse = resolve
+  })
   const proc = Object.assign(new EventEmitter(), {
     stdin: Object.assign(new EventEmitter(), { end: vi.fn() }),
     stderr: new EventEmitter(),
-    stdout: new EventEmitter()
+    stdout: new EventEmitter(),
+    spawned: () => spawned
   })
-  spawnMock.mockReturnValue(proc)
+  spawnMock.mockImplementation(() => {
+    inUse()
+    return proc
+  })
   return proc
 }
 
 /** The spawn stub plus the pending conversion, stderr emitted before the exit included. */
-const runToFile = (
+const runToFile = async(
   to: string,
   outputPath: string,
   { input = 'x', stderr = '', code = 0, ...options }: PandocToFileOptions & {
@@ -57,6 +97,7 @@ const runToFile = (
 ) => {
   const proc = startProcess()
   const done = pandoc.toFile(to, outputPath, input, options)
+  await proc.spawned()
   if (stderr) proc.stderr.emit('data', Buffer.from(stderr))
   proc.emit('close', code)
   return { proc, done }
@@ -72,6 +113,12 @@ const makeLookupFolder = (): string => {
 }
 
 describe('pandoc export', () => {
+  beforeEach(() => {
+    // A real executable, so resolution stops at the override. child_process is
+    // mocked here, and a fall-through to the login shell would hang on it.
+    process.env.MARKTEXT_PANDOC = process.execPath
+  })
+
   afterEach(() => {
     spawnMock.mockReset()
     delete process.env.MARKTEXT_PANDOC
@@ -88,11 +135,71 @@ describe('pandoc export', () => {
   })
 
   // `gfm` is what the editor shows; the extensions asked for mirror its preferences (#5379).
+  // `gfm` enables `tex_math_dollars` and `footnotes`, so the defaults are already the
+  // editor's, and only the prefs that diverge or opt in add a flag.
   it('reads GFM, adding sub/superscript or dropping footnotes only when asked', () => {
-    expect(getPandocReader(false)).toBe('gfm')
-    expect(getPandocReader(false, false)).toBe('gfm-footnotes')
-    expect(getPandocReader(true)).toBe('gfm+superscript+subscript')
-    expect(getPandocReader(true)).not.toMatch(/tex_math_gfm|alerts/)
+    expect(getPandocReader({ superSubScript: false })).toBe('gfm')
+    expect(getPandocReader({ superSubScript: false, footnotes: false })).toBe('gfm-footnotes')
+    expect(getPandocReader({ superSubScript: true })).toBe('gfm+superscript+subscript')
+  })
+
+  // #5566: the Preferences → Markdown math toggles must reach the reader, or an export
+  // silently parses the delimiters the editor turns on — or leaves on — differently.
+  it('forwards the dollar and gfm math toggles to the gfm reader', () => {
+    expect(getPandocReader({ superSubScript: false, texMathDollars: false })).toBe(
+      'gfm-tex_math_dollars'
+    )
+    expect(getPandocReader({ superSubScript: false, texMathGfm: true }, EXTENSIONS)).toBe(
+      'gfm+tex_math_gfm'
+    )
+    expect(getPandocReader({ superSubScript: false, texMathGfm: false }, EXTENSIONS)).toBe(
+      'gfm-tex_math_gfm'
+    )
+    // No listing, or one without the name: `gfm`'s own default is the only safe answer.
+    expect(getPandocReader({ superSubScript: false, texMathGfm: true })).toBe('gfm')
+  })
+
+  // pandoc's `gfm` rejects the backslash math extensions, so one switches the reader to
+  // `markdown` — told to read every non-math extension the way `gfm` does (#5566).
+  it('reads the backslash math from a gfm-shaped markdown reader', () => {
+    const reader = getPandocReader({ superSubScript: false, texMathSingleBackslash: true }, EXTENSIONS)
+    expect(reader.startsWith('markdown')).toBe(true)
+    expect(reader).toContain('+tex_math_single_backslash')
+    expect(reader).not.toContain('tex_math_double_backslash')
+    // The extensions `gfm` does not carry come off, so the quote/dash `smart` rewrite and
+    // the definition-list and fenced-div syntaxes cannot change the document.
+    expect(reader).toContain('-smart')
+    expect(reader).toContain('-fenced_divs')
+    // `pipe_tables` is on in both, so it needs no flag either way.
+    expect(reader).not.toMatch(/[+-]pipe_tables/)
+    // commonmark-only: no pandoc reader carries it beside the backslash extensions.
+    expect(reader).not.toContain('tex_math_gfm')
+
+    expect(
+      getPandocReader(
+        {
+          superSubScript: true,
+          footnotes: false,
+          texMathSingleBackslash: true,
+          texMathDoubleBackslash: true
+        },
+        EXTENSIONS
+      )
+    ).toContain('+tex_math_single_backslash+tex_math_double_backslash')
+    // `markdown` enables sub/superscript itself, so an enabled preference adds no flag.
+    expect(reader).toContain('-superscript')
+
+    // No listing, or one that failed (`null`): only the math flags can be named, so a
+    // backslash document still exports its formulas instead of bare `markdown`.
+    expect(getPandocReader({ superSubScript: false, texMathSingleBackslash: true })).toBe(
+      'markdown+tex_math_single_backslash'
+    )
+    expect(getPandocReader({ superSubScript: false, texMathSingleBackslash: true }, null)).toBe(
+      'markdown+tex_math_single_backslash'
+    )
+    expect(
+      getPandocReader({ superSubScript: false, texMathDollars: false, texMathDoubleBackslash: true })
+    ).toBe('markdown-tex_math_dollars+tex_math_double_backslash')
   })
 
   // pandoc ships no `zh`/`zh-CN`/`zh-TW`, and an unresolvable `lang` warns on every export (#5379).
@@ -107,32 +214,26 @@ describe('pandoc export', () => {
 
   // The argv is asserted because `cwd` is what makes `![](pics/a.png)` resolve.
   it('spawns the named binary with the reader and target asked for', async() => {
-    const { proc, done } = runToFile('docx', '/tmp/notes.docx', {
+    const { proc, done } = await runToFile('docx', '/tmp/notes.docx', {
       input: '# Title',
       cwd: '/docs/notes',
-      reader: getPandocReader(true)
+      reader: getPandocReader({ superSubScript: true })
     })
 
     await expect(done).resolves.toEqual({ warnings: '' })
-    // Which binary is used depends on the install, so argv and `cwd` are what this pins.
     expect(spawnMock).toHaveBeenCalledWith(
-      expect.any(String),
+      process.execPath,
       ['-f', 'gfm+superscript+subscript', '-t', 'docx', '-s', '-o', '/tmp/notes.docx'],
       { cwd: '/docs/notes' }
     )
     expect(proc.stdin.end).toHaveBeenCalledWith('# Title')
 
-    spawnMock.mockReset()
-    process.env.MARKTEXT_PANDOC = process.execPath
-    await runToFile('docx', '/tmp/x.docx').done
-
-    expect(spawnMock).toHaveBeenCalledWith(process.execPath, expect.any(Array), expect.anything())
-    expect(pandoc.exists()).toBe(true)
+    await expect(pandoc.exists()).resolves.toBe(true)
   })
 
   // pandoc splits `--metadata` on the first colon only, so "Q3: plan" survives.
   it('passes metadata on as --metadata key:value, dropping empty values', async() => {
-    const { done } = runToFile('epub3', '/tmp/x.epub', {
+    const { done } = await runToFile('epub3', '/tmp/x.epub', {
       metadata: { title: 'Notes: draft', lang: 'zh-Hans', author: '' }
     })
     await done
@@ -146,20 +247,20 @@ describe('pandoc export', () => {
 
   // Exit code 0 is not clean: stderr holds the warnings and names the failing position.
   it('reports the warnings of a run that worked and the stderr of one that did not', async() => {
-    const { done } = runToFile('docx', '/tmp/x.docx', {
+    const { done } = await runToFile('docx', '/tmp/x.docx', {
       stderr: '[WARNING] Could not fetch resource pics/a.png: replacing image with description\n'
     })
     await expect(done).resolves.toEqual({
       warnings: '[WARNING] Could not fetch resource pics/a.png: replacing image with description'
     })
 
-    const { done: broken } = runToFile('docx', '/tmp/x.docx', {
+    const { done: broken } = await runToFile('docx', '/tmp/x.docx', {
       code: 1,
       stderr: 'pandoc: Unknown output format docx\n'
     })
     await expect(broken).rejects.toThrow('Unknown output format docx')
 
-    const { done: quiet } = runToFile('docx', '/tmp/x.docx', { code: 3 })
+    const { done: quiet } = await runToFile('docx', '/tmp/x.docx', { code: 3 })
     await expect(quiet).rejects.toThrow('pandoc exited with code 3')
   })
 
@@ -167,6 +268,7 @@ describe('pandoc export', () => {
   it('survives an EPIPE on stdin and a binary that cannot be spawned', async() => {
     const proc = startProcess()
     const pending = pandoc.toFile('docx', '/tmp/x.docx', 'x'.repeat(70 * 1024))
+    await proc.spawned()
     expect(() => proc.stdin.emit('error', new Error('write EPIPE'))).not.toThrow()
     proc.stderr.emit('data', Buffer.from('pandoc: Unknown output format broke\n'))
     proc.emit('close', 1)
@@ -174,6 +276,7 @@ describe('pandoc export', () => {
 
     const failing = startProcess()
     const missing = pandoc.toFile('docx', '/tmp/x.docx', 'x')
+    await failing.spawned()
     failing.emit('error', new Error('spawn pandoc ENOENT'))
     await expect(missing).rejects.toThrow('spawn pandoc ENOENT')
   })
@@ -188,13 +291,12 @@ describe('pandoc export', () => {
       USERPROFILE: 'C:\\Users\\me'
     }
 
+    // The package-manager shim dirs are not here: they serve every tool and
+    // live in extraPathDirs.
     expect(pandocLocations('win32', env)).toEqual([
       path.join(env.ProgramFiles, 'Pandoc', 'pandoc.exe'),
       path.join(env['ProgramFiles(x86)'], 'Pandoc', 'pandoc.exe'),
-      path.join(env.LOCALAPPDATA, 'Pandoc', 'pandoc.exe'),
-      path.join(env.ProgramData, 'chocolatey', 'bin', 'pandoc.exe'),
-      path.join(env.USERPROFILE, 'scoop', 'shims', 'pandoc.exe'),
-      path.join(env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links', 'pandoc.exe')
+      path.join(env.LOCALAPPDATA, 'Pandoc', 'pandoc.exe')
     ])
     expect(pandocLocations('linux', env)).toEqual([])
   })
@@ -237,7 +339,7 @@ describe('pandoc export', () => {
 
   // The plain-text writers keep `pics/a.png` as a link, so pandoc copies the pictures along.
   it('mirrors the document images next to the export', async() => {
-    const { done } = runToFile('rst', '/tmp/out/notes.rst', {
+    const { done } = await runToFile('rst', '/tmp/out/notes.rst', {
       cwd: '/docs/notes',
       resourcePath: '/docs/notes',
       mirrorMedia: true
@@ -282,10 +384,94 @@ describe('pandoc export', () => {
     expect(shouldMirrorMedia(['pics/a.png'], dir, `${dir}${path.sep}..${path.sep}${path.basename(dir)}${path.sep}notes.rst`)).toBe(false)
   })
 
+  // The listing is the authority on which names the installed pandoc accepts and whether
+  // it enables each one; the reader is built from exactly what it reports.
+  it('reads the extension names pandoc lists, with their default state', async() => {
+    const proc = startProcess()
+    const pending = listReaderExtensions('gfm')
+    await proc.spawned()
+    proc.stdout.emit('data', Buffer.from('+tex_math_dollars\r\n-smart\n+tex_math_gfm\n'))
+    proc.emit('close', 0)
+
+    await expect(pending).resolves.toEqual(
+      new Map([
+        ['tex_math_dollars', true],
+        ['smart', false],
+        ['tex_math_gfm', true]
+      ])
+    )
+    expect(spawnMock).toHaveBeenCalledWith(expect.any(String), ['--list-extensions=gfm'])
+
+    // A probe that fails, exits non-zero or names nothing is `null`, not an empty
+    // listing: the reader then falls back instead of reading as "carries nothing".
+    const failing = startProcess()
+    const missing = listReaderExtensions('markdown')
+    await failing.spawned()
+    failing.emit('error', new Error('spawn pandoc ENOENT'))
+    await expect(missing).resolves.toBeNull()
+
+    const broken = startProcess()
+    const exited = listReaderExtensions('markdown')
+    await broken.spawned()
+    broken.emit('close', 2)
+    await expect(exited).resolves.toBeNull()
+
+    const empty = startProcess()
+    const nothing = listReaderExtensions('markdown')
+    await empty.spawned()
+    empty.emit('close', 0)
+    await expect(nothing).resolves.toBeNull()
+  })
+
+  // A miss must not be remembered: a pandoc installed or repaired after a failed probe is
+  // picked up by the next export instead of riding the empty listing forever.
+  it('retries both probes after a miss and caches the hit', async() => {
+    const procs = [0, 1, 2, 3].map(() =>
+      Object.assign(new EventEmitter(), {
+        stdin: Object.assign(new EventEmitter(), { end: vi.fn() }),
+        stderr: new EventEmitter(),
+        stdout: new EventEmitter()
+      })
+    )
+    let next = 0
+    spawnMock.mockImplementation(() => procs[next++])
+
+    const first = getReaderExtensions()
+    await vi.waitFor(() => expect(spawnMock).toHaveBeenCalledTimes(2))
+    procs[0].emit('error', new Error('spawn pandoc ENOENT'))
+    procs[1].emit('error', new Error('spawn pandoc ENOENT'))
+    await expect(first).resolves.toBeNull()
+
+    const second = getReaderExtensions()
+    await vi.waitFor(() => expect(spawnMock).toHaveBeenCalledTimes(4))
+    procs[2].stdout.emit('data', Buffer.from('+tex_math_gfm\n'))
+    procs[2].emit('close', 0)
+    procs[3].stdout.emit('data', Buffer.from('+tex_math_dollars\n-tex_math_single_backslash\n'))
+    procs[3].emit('close', 0)
+    await expect(second).resolves.toEqual({
+      gfm: new Map([['tex_math_gfm', true]]),
+      markdown: new Map([
+        ['tex_math_dollars', true],
+        ['tex_math_single_backslash', false]
+      ])
+    })
+
+    // The hit is remembered: a third call spawns nothing more.
+    await expect(getReaderExtensions()).resolves.toEqual({
+      gfm: new Map([['tex_math_gfm', true]]),
+      markdown: new Map([
+        ['tex_math_dollars', true],
+        ['tex_math_single_backslash', false]
+      ])
+    })
+    expect(spawnMock).toHaveBeenCalledTimes(4)
+  })
+
   // The list comes from pandoc's AST; a raw `<img>` is a raw node and never reaches it.
   it('lists the images pandoc found in the document', async() => {
     const proc = startProcess()
     const pending = listLinkedMedia('# Title', 'gfm')
+    await proc.spawned()
     proc.stdout.emit('data', Buffer.from(JSON.stringify([
       { t: 'Para', c: [{ t: 'Image', c: [[], [], ['pics/a.png', 'fig:']] }] },
       { t: 'RawInline', c: ['html', '<img src="pics/b.png">'] }

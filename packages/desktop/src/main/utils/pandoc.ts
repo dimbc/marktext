@@ -1,10 +1,8 @@
 // Copy from https://github.com/utatti/simple-pandoc/blob/master/index.js
 import { spawn } from 'child_process'
-import { accessSync, constants } from 'fs'
 import path from 'path'
-import type { Readable } from 'stream'
-import commandExists from 'command-exists'
-import { isFile2 } from 'common/filesystem'
+import { isExecutableFile } from 'common/filesystem'
+import { resolveCommand } from './resolveCommand'
 import type { PandocCommandInfo } from '@shared/types/pandoc'
 
 const pandocCommand = 'pandoc'
@@ -51,10 +49,154 @@ export const shouldMirrorMedia = (
   (!!sourceDir || links.every((url) => path.isAbsolute(url))) &&
   (sourceDir === undefined || path.relative(sourceDir, path.dirname(outputPath)) !== '')
 
-// `gfm` matches the editor within what pandoc 3.1.3 accepts (no `tex_math_gfm`);
-// `-footnotes` keeps a `[^1]` literal unless the editor's preference renders it.
-export const getPandocReader = (superSubScript: boolean, footnotes = true): string =>
-  `gfm${superSubScript ? '+superscript+subscript' : ''}${footnotes ? '' : '-footnotes'}`
+/** The Preferences → Markdown toggles that map onto a pandoc reader extension. */
+export interface PandocReaderOptions {
+  superSubScript: boolean
+  /** `false` keeps a `[^1]` literal; the readers enable `footnotes` themselves. */
+  footnotes?: boolean
+  /** `false` drops `$…$`; the readers enable `tex_math_dollars` themselves. */
+  texMathDollars?: boolean
+  /** pandoc's `tex_math_gfm`: GitHub's `` $`…`$ `` and ` ```math ` math. */
+  texMathGfm?: boolean
+  /** pandoc's `tex_math_single_backslash`: `\(…\)` and `\[…\]`. */
+  texMathSingleBackslash?: boolean
+  /** pandoc's `tex_math_double_backslash`: `\\(…\\)` and `\\[…\\]`. */
+  texMathDoubleBackslash?: boolean
+}
+
+/** Every extension a reader lists, mapped to whether that reader enables it by default. */
+export type ReaderExtensionDefaults = ReadonlyMap<string, boolean>
+
+export interface PandocReaderExtensions {
+  gfm: ReaderExtensionDefaults
+  markdown: ReaderExtensionDefaults
+}
+
+/**
+ * The reader a pandoc export parses with, from the Preferences → Markdown toggles.
+ *
+ * `gfm` is the reader that matches the editor, but pandoc's `gfm` carries neither
+ * `tex_math_single_backslash` nor `tex_math_double_backslash` — naming one makes pandoc
+ * reject the whole reader (#5566). When either is on, the reader is built from
+ * `markdown`, which supports them, and every other extension is forced to gfm's own
+ * default so tables, strikeout and task lists keep reading the same way.
+ *
+ * `tex_math_gfm` is commonmark-only: no pandoc reader carries it together with the
+ * backslash extensions, so a document enabling both is read with the backslash ones and
+ * the GFM math is left to the reader's default. The `tex_math_gfm` flag and the
+ * `markdown` diff are both written only from `extensions`, the installed pandoc's own
+ * listing; without it each reader keeps its format defaults, since pandoc rejects a
+ * reader carrying a name it does not know.
+ */
+export const getPandocReader = (
+  options: PandocReaderOptions,
+  extensions?: PandocReaderExtensions | null
+): string => {
+  const {
+    superSubScript,
+    footnotes = true,
+    texMathDollars = true,
+    texMathGfm = false,
+    texMathSingleBackslash = false,
+    texMathDoubleBackslash = false
+  } = options
+
+  if (texMathSingleBackslash || texMathDoubleBackslash) {
+    // `superSubScript`, `footnotes` and the three math extensions are the editor's; every
+    // other extension follows gfm, including the ones gfm does not carry (which stay off).
+    const desired = (name: string): boolean => {
+      switch (name) {
+        case 'superscript':
+        case 'subscript':
+          return superSubScript
+        case 'footnotes':
+          return footnotes
+        case 'tex_math_dollars':
+          return texMathDollars
+        case 'tex_math_single_backslash':
+          return texMathSingleBackslash
+        case 'tex_math_double_backslash':
+          return texMathDoubleBackslash
+        default:
+          return extensions?.gfm.get(name) ?? false
+      }
+    }
+    const flags: string[] = []
+    for (const [name, markdownDefault] of extensions?.markdown ?? []) {
+      const want = desired(name)
+      if (want && !markdownDefault) flags.push(`+${name}`)
+      if (!want && markdownDefault) flags.push(`-${name}`)
+    }
+    // Without a listing only the math flags can be named safely; the rest keeps the
+    // reader's own defaults rather than a guess at what this pandoc carries.
+    if (!extensions) {
+      if (!texMathDollars) flags.push('-tex_math_dollars')
+      if (texMathSingleBackslash) flags.push('+tex_math_single_backslash')
+      if (texMathDoubleBackslash) flags.push('+tex_math_double_backslash')
+    }
+    return `markdown${flags.join('')}`
+  }
+
+  const flags: string[] = []
+  if (superSubScript) flags.push('+superscript+subscript')
+  if (!footnotes) flags.push('-footnotes')
+  if (!texMathDollars) flags.push('-tex_math_dollars')
+  if (extensions?.gfm.has('tex_math_gfm')) {
+    flags.push(texMathGfm ? '+tex_math_gfm' : '-tex_math_gfm')
+  }
+  return `gfm${flags.join('')}`
+}
+
+/**
+ * The extensions a reader lists, each with whether it enables them by default, from
+ * `--list-extensions=<format>`. The listing marks every line (`+tex_math_dollars`,
+ * `-smart`). `null` is the answer a pandoc that cannot list gives — a spawn that fails,
+ * a non-zero exit, or no line at all. It is never an empty map: that would read as "this
+ * reader carries nothing" and strip the reader down to bare math flags.
+ */
+export const listReaderExtensions = async(
+  format: string
+): Promise<ReaderExtensionDefaults | null> => {
+  const command = await getCommand()
+  return new Promise((resolve) => {
+    const proc = spawn(command, [`--list-extensions=${format}`])
+    let output = ''
+    proc.stdout.on('data', (chunk: Buffer | string) => {
+      output += chunk.toString()
+    })
+    proc.stdin.on('error', () => {})
+    proc.on('error', () => resolve(null))
+    proc.on('close', (code: number | null) => {
+      const defaults = new Map<string, boolean>()
+      if (code === 0) {
+        for (const line of output.split('\n')) {
+          // Lines end in `\r\n` on Windows, which `.` would not cross.
+          const match = line.trim().match(/^([+-])(.+)$/)
+          if (match) defaults.set(match[2].trim(), match[1] === '+')
+        }
+      }
+      resolve(defaults.size > 0 ? defaults : null)
+    })
+    proc.stdin.end()
+  })
+}
+
+let readerExtensions: Promise<PandocReaderExtensions | null> | undefined
+
+/**
+ * Both listings, or `null` when either is unavailable. A hit is remembered — it is two
+ * spawns and each export asks the same question — but a miss is not, so a pandoc
+ * installed or repaired later is not stuck behind the first failure.
+ */
+export const getReaderExtensions = async(): Promise<PandocReaderExtensions | null> => {
+  readerExtensions ??= Promise.all([
+    listReaderExtensions('gfm'),
+    listReaderExtensions('markdown')
+  ]).then(([gfm, markdown]) => (gfm && markdown ? { gfm, markdown } : null))
+  const extensions = await readerExtensions
+  if (extensions === null) readerExtensions = undefined
+  return extensions
+}
 
 // pandoc knows no `zh`/`zh-CN` and would warn, so Chinese takes the script subtag.
 export const getPandocLanguage = (locale: string): string => {
@@ -64,39 +206,89 @@ export const getPandocLanguage = (locale: string): string => {
 }
 
 // Windows only: the installer can be told not to touch `PATH` and a portable copy never is
-// (`patchEnvPath` covers macOS/Linux, #2751). The folder it writes is the one that check
-// cannot reach; the shims on `PATH` (chocolatey, scoop, winget) only set the order. The
-// arguments let a spec pin both.
+// (#2751). These are the folders it writes — the package-manager shim dirs are every
+// tool's business and live in `extraPathDirs`. The arguments let a spec pin both.
 export const pandocLocations = (platform: NodeJS.Platform, env: NodeJS.ProcessEnv): string[] => {
   if (platform !== 'win32') return []
   return [
     env.ProgramFiles && path.join(env.ProgramFiles, 'Pandoc', 'pandoc.exe'),
     env['ProgramFiles(x86)'] && path.join(env['ProgramFiles(x86)'], 'Pandoc', 'pandoc.exe'),
-    env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Pandoc', 'pandoc.exe'),
-    env.ProgramData && path.join(env.ProgramData, 'chocolatey', 'bin', 'pandoc.exe'),
-    env.USERPROFILE && path.join(env.USERPROFILE, 'scoop', 'shims', 'pandoc.exe'),
-    env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links', 'pandoc.exe')
+    env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Pandoc', 'pandoc.exe')
   ].filter((candidate): candidate is string => !!candidate)
 }
 
 /** Node refuses to spawn a `.bat`/`.cmd` without `shell: true` (CVE-2024-27980). */
-const isBatchFile = (filepath: string, platform: NodeJS.Platform): boolean =>
-  platform === 'win32' && /\.(bat|cmd)$/i.test(filepath.trim())
+const isBatchFile = (
+  command: string,
+  platform: NodeJS.Platform = process.platform
+): boolean => platform === 'win32' && /\.(bat|cmd)$/i.test(command.trim())
 
-/** A `PATH` hit counts only if `spawn` could run it; on Windows `X_OK` is a plain existence check. */
-const isRunnable = (filepath: string): boolean => {
-  if (!isFile2(filepath)) return false
-  try {
-    accessSync(filepath, constants.X_OK)
-    return true
-  } catch {
-    return false
-  }
+const resolve = async(): Promise<string | null> => {
+  const override = process.env.MARKTEXT_PANDOC
+  // Naming a batch file is as unusable as naming one that is not there.
+  if (override && isBatchFile(override)) return null
+  return resolveCommand(pandocCommand, {
+    override,
+    preferred: pandocLocations(process.platform, process.env)
+  })
 }
 
-// The file `PATH` would run for `command`, or `null` when it holds none. `command-exists`
-// answers this with a boolean and discards the path — the one thing the pane has to name (#2751).
-export const findOnPath = (
+let found: Promise<string> | undefined
+
+/**
+ * The one resolution `exists` and every spawn share — a bare name means PATH
+ * found it, which a caller must not confuse with the miss fallback below.
+ *
+ * A hit is remembered: resolution costs a blocking `command -v`, and one
+ * export asks three times (the gate, the media listing, the conversion). A
+ * miss is not, or the notice inviting the user to install pandoc would be
+ * unanswerable without a restart.
+ */
+const findCommand = (): Promise<string | null> => {
+  found ??= resolve().then((command) => command ?? Promise.reject(new Error('pandoc missing')))
+  return found.catch(() => {
+    found = undefined
+    return null
+  })
+}
+
+/** The bare name is the fallback, so a miss still spawns and reports why. */
+const getCommand = async(): Promise<string> => (await findCommand()) ?? pandocCommand
+
+interface PandocFn {
+  (from: string, to: string, ...args: string[]): Promise<string>
+  exists: () => Promise<boolean>
+  toFile: (
+    to: string,
+    outputPath: string,
+    input: string,
+    options?: PandocToFileOptions
+  ) => Promise<PandocToFileResult>
+}
+
+const pandoc = (async(from: string, to: string, ...args: string[]): Promise<string> => {
+  const command = await getCommand()
+  const option = ['-s', from, '-t', to].concat(args)
+  return new Promise((resolve, reject) => {
+    const proc = spawn(command, option)
+    proc.on('error', reject)
+    let data = ''
+    proc.stdout.on('data', (chunk: Buffer | string) => {
+      data += chunk.toString()
+    })
+    proc.stdout.on('end', () => resolve(data))
+    proc.stdout.on('error', reject)
+    proc.stdin.end()
+  })
+}) as PandocFn
+
+pandoc.exists = async(): Promise<boolean> => (await findCommand()) !== null
+
+// The file `PATH` would run for `command`, or `null` when it holds none. `resolveCommand`
+// answers "which string spawns" and returns the bare name when PATH holds it, so a caller
+// that has to *name* the binary — the preference pane — needs this to turn it into a file.
+// `isExecutableFile` covers `X_OK`, which is a plain existence check on Windows.
+const findOnPath = (
   command: string,
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env
@@ -111,80 +303,22 @@ export const findOnPath = (
     if (!folder) continue
     for (const suffix of suffixes) {
       const candidate = path.join(folder, `${command}${suffix}`)
-      if (!isBatchFile(candidate, platform) && isRunnable(candidate)) return candidate
+      if (!isBatchFile(candidate, platform) && isExecutableFile(candidate)) return candidate
     }
   }
   return null
 }
 
-/** The file this machine would run for pandoc, or `null` when none can be named. */
-const locatePandoc = (
-  platform: NodeJS.Platform = process.platform,
-  env: NodeJS.ProcessEnv = process.env
-): string | null => {
-  const fromEnv = env.MARKTEXT_PANDOC
-  if (fromEnv && isFile2(fromEnv) && !isBatchFile(fromEnv, platform)) return fromEnv
-  const installed = pandocLocations(platform, env).find((candidate) => isFile2(candidate))
-  return installed ?? findOnPath(pandocCommand, platform, env)
+/**
+ * The binary the preference pane names, which `exists()` cannot: a bare name from
+ * `resolveCommand` becomes the file PATH resolves it to, and an unresolvable one stays
+ * `null` so the pane reports Not found rather than a name that would not spawn (#2751).
+ */
+export const resolvePandocCommand = async(): Promise<PandocCommandInfo> => {
+  const command = await findCommand()
+  if (!command) return { command: null }
+  return { command: path.isAbsolute(command) ? command : findOnPath(command) ?? command }
 }
-
-/** What the preference pane reports; `exists()` can only answer yes or no. */
-export const resolvePandocCommand = (
-  platform: NodeJS.Platform = process.platform,
-  env: NodeJS.ProcessEnv = process.env
-): PandocCommandInfo => {
-  const command = locatePandoc(platform, env)
-  if (command) return { command }
-  // A shell also runs the batch shims this lookup skips, so ask before calling pandoc missing.
-  return commandExists.sync(pandocCommand) ? { command: null, found: true } : { command: null }
-}
-
-// Spawning needs no shell fallback: a batch shim could not be spawned either way.
-const getCommand = (): string => locatePandoc() ?? pandocCommand
-
-interface PandocConverter {
-  (): Promise<string>
-  stream: (srcStream: NodeJS.ReadableStream) => Readable | null
-}
-
-interface PandocFn {
-  (from: string, to: string, ...args: string[]): PandocConverter
-  exists: () => boolean
-  toFile: (
-    to: string,
-    outputPath: string,
-    input: string,
-    options?: PandocToFileOptions
-  ) => Promise<PandocToFileResult>
-}
-
-const pandoc = ((from: string, to: string, ...args: string[]): PandocConverter => {
-  const command = getCommand()
-  const option = ['-s', from, '-t', to].concat(args)
-
-  const converter = ((): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const proc = spawn(command, option)
-      proc.on('error', reject)
-      let data = ''
-      proc.stdout.on('data', (chunk: Buffer | string) => {
-        data += chunk.toString()
-      })
-      proc.stdout.on('end', () => resolve(data))
-      proc.stdout.on('error', reject)
-      proc.stdin.end()
-    })) as PandocConverter
-
-  converter.stream = (srcStream: NodeJS.ReadableStream): Readable | null => {
-    const proc = spawn(command, option)
-    srcStream.pipe(proc.stdin)
-    return proc.stdout
-  }
-
-  return converter
-}) as PandocFn
-
-pandoc.exists = (): boolean => resolvePandocCommand().command !== null
 
 export interface PandocToFileOptions {
   /** Folder the document's relative links resolve against, or pandoc uses cwd. */
@@ -203,15 +337,22 @@ export interface PandocToFileResult {
   warnings: string
 }
 
-// Convert `input` to `outputPath`; the streaming API above cannot serve binary targets.
-pandoc.toFile = (
+/** Convert `input` to `outputPath`; the converter above cannot serve binary targets. */
+pandoc.toFile = async(
   to: string,
   outputPath: string,
   input: string,
   options: PandocToFileOptions = {}
-): Promise<PandocToFileResult> =>
-  new Promise((resolve, reject) => {
-    const { cwd, reader = getPandocReader(false), metadata = {}, resourcePath, mirrorMedia } = options
+): Promise<PandocToFileResult> => {
+  const command = await getCommand()
+  return new Promise((resolve, reject) => {
+    const {
+      cwd,
+      reader = getPandocReader({ superSubScript: false }),
+      metadata = {},
+      resourcePath,
+      mirrorMedia
+    } = options
     const option = ['-f', reader, '-t', to, '-s']
     // pandoc splits `--metadata` on the first colon only, so "Q3: plan" survives.
     for (const [key, value] of Object.entries(metadata)) {
@@ -226,7 +367,7 @@ pandoc.toFile = (
     option.push('-o', outputPath)
     // The links pandoc writes are relative to where it runs, so a mirrored export has
     // to run in the folder it is written to.
-    const proc = spawn(getCommand(), option, { cwd: mirrorMedia ? path.dirname(outputPath) : cwd })
+    const proc = spawn(command, option, { cwd: mirrorMedia ? path.dirname(outputPath) : cwd })
     let errorOutput = ''
     proc.on('error', reject)
     proc.stderr.on('data', (chunk: Buffer | string) => {
@@ -244,11 +385,13 @@ pandoc.toFile = (
     })
     proc.stdin.end(input)
   })
+}
 
 // The links pandoc found, which is what an export mirrors; raw HTML `<img>` is not listed.
-export const listLinkedMedia = (input: string, reader: string): Promise<string[]> =>
-  new Promise((resolve) => {
-    const proc = spawn(getCommand(), ['-f', reader, '-t', 'json'])
+export const listLinkedMedia = async(input: string, reader: string): Promise<string[]> => {
+  const command = await getCommand()
+  return new Promise((resolve) => {
+    const proc = spawn(command, ['-f', reader, '-t', 'json'])
     let ast = ''
     proc.stdout.on('data', (chunk: Buffer | string) => {
       ast += chunk.toString()
@@ -272,5 +415,6 @@ export const listLinkedMedia = (input: string, reader: string): Promise<string[]
     })
     proc.stdin.end(input)
   })
+}
 
 export default pandoc

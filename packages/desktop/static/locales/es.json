@@ -418,6 +418,7 @@
         "texMathGfm": "Activar la extensión de markdown de pandoc tex_math_gfm",
         "texMathSingleBackslash": "Activar la extensión de markdown de pandoc tex_math_single_backslash",
         "texMathDoubleBackslash": "Activar la extensión de markdown de pandoc tex_math_double_backslash",
+        "highlightSyntax": "Habilitar la sintaxis de resaltado no estándar ==texto==",
         "isHtmlEnabled": "Habilitar renderizado HTML",
         "softNewlineAsSpace": "Tratar los saltos de línea suaves como espacios",
         "sequenceTheme": "Tema del diagrama de secuencia",
@@ -656,6 +657,7 @@
         "texMathGfm": "Matemáticas TeX de GitHub ($`…`$ y ```math)",
         "texMathSingleBackslash": "Matemáticas TeX con barra invertida simple",
         "texMathDoubleBackslash": "Matemáticas TeX con barra invertida doble",
+        "highlightSyntax": "Resaltado (==texto==)",
         "frontmatterType": {
           "jsonBrace": "JSON con Llaves",
           "jsonSemicolon": "JSON con Punto y Coma",
@@ -907,6 +909,7 @@
     "ok": "OK"
   },
   "dialog": {
+    "moveToTrash": "¿Seguro que quieres mover \"{name}\" a la papelera?",
     "cancel": "Cancelar",
     "changesWillBeLost": "Los cambios se perderán",
     "close": "Cerrar",
@@ -976,6 +979,21 @@
       "title": "Insertar Tabla",
       "rows": "Filas",
       "columns": "Columnas"
+    },
+    "mediaViewer": {
+      "title": "Vista previa",
+      "close": "Cerrar",
+      "zoomIn": "Acercar",
+      "zoomOut": "Alejar",
+      "fit": "Ajustar a la ventana",
+      "actualSize": "Tamaño real",
+      "saveTitle": "Guardar diagrama",
+      "saveSvg": "Guardar como SVG",
+      "savePng": "Guardar como PNG",
+      "copyImage": "Copiar imagen",
+      "copied": "Imagen copiada al portapapeles",
+      "saveFailed": "No se pudo guardar la imagen: {error}",
+      "copyFailed": "No se pudo copiar la imagen: {error}"
     },
     "notifications": {
       "notificationNotFound": "Notificación no encontrada"

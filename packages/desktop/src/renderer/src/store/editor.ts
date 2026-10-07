@@ -143,10 +143,16 @@ export interface EditorState {
   tabIdToIndex: Record<string, number>
   listToc: TocItem[]
   toc: TocTreeNode[]
+  // Heading the cursor is inside, for the TOC highlight; null above the first.
+  activeHeadingSlug: string | null
   selectionWordCount: FileWordCount | null
 }
 
 const autoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+// Sidebar opens record whether the editor should take focus once that pathname
+// finishes loading. Keyed by pathname so concurrent opens keep their own intent.
+const openIntents = new Map<string, boolean>()
 
 export const useEditorStore = defineStore('editor', {
   state: (): EditorState => ({
@@ -155,6 +161,7 @@ export const useEditorStore = defineStore('editor', {
     tabIdToIndex: {},
     listToc: [], // Used for equal check and for searching for the correct github-slug to jump to
     toc: [],
+    activeHeadingSlug: null,
     selectionWordCount: null
   }),
 
@@ -516,6 +523,8 @@ export const useEditorStore = defineStore('editor', {
         .then(() => {
           window.electron.clipboard.writeText(deletionUrl)
         })
+        // Dismissing the notice rejects; declining to copy is not a failure.
+        .catch(() => {})
     },
 
     // We need to update line endings menu when changing tabs.
@@ -863,6 +872,8 @@ export const useEditorStore = defineStore('editor', {
         this.currentFile = currentFile
         this.selectionWordCount = null
         didUpdateCurrentFile = true
+        // Slugs belong to the old document; the next selection-change re-seeds.
+        this.activeHeadingSlug = null
 
         if (!this.tabs.some((file) => file.id === currentFile.id)) {
           this.tabs.push(currentFile)
@@ -1234,6 +1245,24 @@ export const useEditorStore = defineStore('editor', {
       this.UPDATE_CURRENT_FILE(nextTab)
     },
 
+    // The sidebar records what should happen to focus when this open lands:
+    // `false` keeps it in the tree, `true` hands it to the editor.
+    SET_OPEN_INTENT(pathname: string, focus: boolean): void {
+      openIntents.set(pathname, focus)
+    },
+
+    // Reads and clears the intent for this pathname; `null` means no opinion.
+    TAKE_OPEN_INTENT(pathname: string | null | undefined): boolean | null {
+      if (!pathname) return null
+      for (const [key, focus] of openIntents) {
+        if (window.fileUtils.isSamePathSync(key, pathname)) {
+          openIntents.delete(key)
+          return focus
+        }
+      }
+      return null
+    },
+
     SWITCH_TAB_BY_FILEPATH(filePath: string, options: TabOptions = {}): void {
       const { tabs } = this
 
@@ -1250,7 +1279,20 @@ export const useEditorStore = defineStore('editor', {
       const next = tabs[nextTabIndex]
       if (!next) return
       this.UPDATE_CURRENT_FILE(next)
+      const focus = this.TAKE_OPEN_INTENT(filePath)
+      if (focus === true) bus.emit('editor-focus')
+      else if (focus === false) bus.emit('SIDEBAR::focus-tree')
       if (options.anchor) this.SCROLL_TO_ANCHOR(options.anchor)
+    },
+
+    FOCUS_FILE(pathname: string): void {
+      const existing = this.tabs.find((t) => window.fileUtils.isSamePathSync(t.pathname, pathname))
+      if (existing) {
+        this.UPDATE_CURRENT_FILE(existing)
+        bus.emit('editor-focus')
+        return
+      }
+      this.SET_OPEN_INTENT(pathname, true)
     },
 
     SWITCH_TAB_BY_INDEX(nextTabIndex: number): void {
@@ -1423,6 +1465,14 @@ export const useEditorStore = defineStore('editor', {
     UPDATE_TOC(toc: TocItem[]): void {
       this.listToc = toc ?? []
       this.toc = listToTree<TocItem>(toc ?? [])
+      // Every caller replaces the whole document, so the old slug is gone.
+      this.activeHeadingSlug = null
+    },
+
+    SET_ACTIVE_HEADING(slug: string | null): void {
+      if (this.activeHeadingSlug !== slug) {
+        this.activeHeadingSlug = slug
+      }
     },
 
     // Content change from realtime preview editor and source code editor
@@ -1612,6 +1662,10 @@ export const useEditorStore = defineStore('editor', {
         markdown,
         superSubScript: preferencesStore.superSubScript === true,
         footnote: preferencesStore.footnote === true,
+        texMathDollars: preferencesStore.texMathDollars === true,
+        texMathGfm: preferencesStore.texMathGfm === true,
+        texMathSingleBackslash: preferencesStore.texMathSingleBackslash === true,
+        texMathDoubleBackslash: preferencesStore.texMathDoubleBackslash === true,
         title: this.documentTitle,
         pathname
       })
@@ -1633,6 +1687,8 @@ export const useEditorStore = defineStore('editor', {
           .then(() => {
             window.electron.shell.showItemInFolder(filePath)
           })
+          // Dismissing the notice rejects; declining to reveal is not a failure.
+          .catch(() => {})
       })
     },
 

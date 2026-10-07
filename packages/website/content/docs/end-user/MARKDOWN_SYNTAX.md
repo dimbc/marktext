@@ -13,6 +13,7 @@ Markdown is a easy-to-use markup language for writing and this document contains
     - [Bold](#bold)
     - [Italics](#italics)
     - [Strikethrough](#strikethrough)
+    - [Highlight](#highlight)
   - [Links](#links)
     - [Autolinks](#autolinks)
     - [Inline links](#inline-links)
@@ -167,6 +168,22 @@ In GFM you can do strickthroughs by wrapping the text with double tildes.
 Which renders to:
 
 ~~Strike through this text.~~
+
+## Highlight
+
+Some editors write highlighted text as `==text==`. MarkText reads this
+non-standard syntax when **Preferences → Markdown → Highlight (==text==)** is
+enabled; it stays literal text otherwise, so documents are unaffected until you
+opt in. Both the editor and the HTML/PDF export render it as `<mark>`, the same
+as an explicit `<mark>text</mark>` tag.
+
+```markdown
+==Highlight this text.==
+```
+
+Renders to:
+
+<mark>Highlight this text.</mark>
 
 <br>
 
@@ -763,6 +780,19 @@ alone.
 ## Diagrams
 
 MarkText support class, flow chart, gantt and sequence diagrams powered by flowchart.js, mermaid and Vega-Lite. [Code](#code) blocks with special language identifiers are used for diagrams.
+
+Hover a rendered diagram to get its toolbar. The magnifier opens the diagram
+full-screen, scaled to fit the window so a large one arrives readable. From
+there you can zoom with the scroll wheel, the `+` / `-` keys or the toolbar
+buttons, drag (or use the arrow keys) to pan, fit it back to the window with
+`0`, and return to its original size with `1`. `Tab` moves between the
+controls and `Esc` closes it.
+
+From that view a diagram can also be saved as SVG, saved as PNG, or copied to
+the clipboard as an image — handy for pasting a diagram into a chat or a slide
+without exporting the whole document. A saved file carries the editor's
+background and draws its labels as plain text, so it reads the same wherever it
+is opened rather than only in a browser.
 
 For example, this:
 
