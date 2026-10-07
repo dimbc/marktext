@@ -9,15 +9,27 @@ vi.mock('child_process', () => {
   return { default: { spawn }, spawn }
 })
 
+// The `command-exists` fallback reads the process environment, so it has to be pinned rather
+// than left to whatever the machine running this suite happens to have installed.
+vi.mock('command-exists', () => {
+  const sync = vi.fn(() => false)
+  return { default: { sync }, sync }
+})
+
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import path from 'path'
+import commandExists from 'command-exists'
 import pandoc, {
   PANDOC_EXPORT_FORMATS,
+  findOnPath,
   formatLinksMedia,
   getPandocLanguage,
   getPandocReader,
   isRemoteMedia,
   listLinkedMedia,
   pandocLocations,
+  resolvePandocCommand,
   shouldMirrorMedia,
   type PandocToFileOptions
 } from 'main_renderer/utils/pandoc'
@@ -50,10 +62,22 @@ const runToFile = (
   return { proc, done }
 }
 
+/** Throwaway folders the command-lookup specs put a file in; removed after each one. */
+const lookupFolders: string[] = []
+
+const makeLookupFolder = (): string => {
+  const folder = mkdtempSync(path.join(tmpdir(), 'marktext-pandoc-lookup-'))
+  lookupFolders.push(folder)
+  return folder
+}
+
 describe('pandoc export', () => {
   afterEach(() => {
     spawnMock.mockReset()
     delete process.env.MARKTEXT_PANDOC
+    for (const folder of lookupFolders.splice(0)) {
+      rmSync(folder, { recursive: true, force: true })
+    }
   })
 
   // The formats of #2103/#3917 minus OPML, whose writer puts the document in one attribute.
@@ -173,6 +197,42 @@ describe('pandoc export', () => {
       path.join(env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links', 'pandoc.exe')
     ])
     expect(pandocLocations('linux', env)).toEqual([])
+  })
+
+  // The pane has to name the binary and `command-exists` answers only yes or no, so the lookup
+  // returns the file itself; `platform` and `env` are what pin both (#2751).
+  it('names the file PATH would run for pandoc', () => {
+    const folder = makeLookupFolder()
+    const binary = path.join(folder, 'pandoc.exe')
+    writeFileSync(binary, '')
+    chmodSync(binary, 0o755)
+    writeFileSync(path.join(folder, 'pandoc.bat'), '')
+
+    expect(findOnPath('pandoc', 'win32', { PATH: folder, PATHEXT: '.exe' })).toBe(binary)
+    // A batch file cannot be spawned without a shell, so it is no path to offer.
+    expect(findOnPath('pandoc', 'win32', { PATH: folder, PATHEXT: '.BAT' })).toBeNull()
+    expect(findOnPath('pandoc', 'win32', { PATH: 'C:\\nowhere' })).toBeNull()
+    expect(findOnPath('pandoc', 'win32', {})).toBeNull()
+  })
+
+  it('reports the path an export would spawn, and none when the machine has no pandoc', () => {
+    const folder = makeLookupFolder()
+    const binary = path.join(folder, 'pandoc-custom')
+    writeFileSync(binary, '')
+
+    expect(resolvePandocCommand('linux', { MARKTEXT_PANDOC: binary })).toEqual({ command: binary })
+    expect(resolvePandocCommand('linux', { PATH: '/nowhere' })).toEqual({ command: null })
+  })
+
+  // A shell also runs the batch shims this lookup skips, so a pandoc only it can see is still
+  // reported rather than called missing.
+  it('reports a pandoc it cannot name instead of calling it missing', () => {
+    vi.mocked(commandExists.sync).mockReturnValueOnce(true)
+
+    expect(resolvePandocCommand('linux', { PATH: '/nowhere' })).toEqual({
+      command: null,
+      found: true
+    })
   })
 
   // The plain-text writers keep `pics/a.png` as a link, so pandoc copies the pictures along.

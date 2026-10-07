@@ -164,9 +164,9 @@
       </template>
     </compound>
 
-    <!-- The note lives on the group, not on the switch: a disabled `bool` dims its whole
-         section, which would fade the very line that explains why it is disabled. -->
-    <compound :notes="pandocStatus">
+    <!-- The note and the button sit beside the switch, not on `compound`'s `notes` prop: a
+         disabled `bool` dims its whole section and would fade the line explaining why. -->
+    <compound>
       <template #head>
         <h6 class="title">
           {{ t('preferences.general.pandoc.title') }}
@@ -175,10 +175,22 @@
       <template #children>
         <bool
           :description="t('preferences.general.pandoc.description')"
+          :detailed-description="t('preferences.general.pandoc.detailedDescription')"
           :bool="showPandocConvert"
           :disable="pandocDisabled"
           :on-change="(value) => onSelectChange('showPandocConvert', value)"
         />
+        <div class="notes">
+          {{ pandocStatus }}
+          <el-button
+            class="pandoc-recheck"
+            size="small"
+            :loading="isProbing"
+            @click="probePandoc"
+          >
+            {{ t('preferences.general.pandoc.recheck') }}
+          </el-button>
+        </div>
       </template>
     </compound>
 
@@ -212,7 +224,7 @@ import CurSelect from '../common/select/index.vue'
 import Bool from '../common/bool/index.vue'
 import textBox from '../common/textBox/index.vue'
 import { pandocSwitchState } from './pandoc'
-import type { PandocProbe } from './pandoc'
+import type { PandocCommandInfo } from '@shared/types/pandoc'
 import { isOsx } from '@/util'
 
 import {
@@ -244,7 +256,8 @@ const {
   showPandocConvert
 } = storeToRefs(preferenceStore)
 
-const pandocProbe = ref<PandocProbe | null>(null)
+const pandocProbe = ref<PandocCommandInfo | null>(null)
+const isProbing = ref(false)
 
 const pandocSwitch = computed(() => pandocSwitchState(pandocProbe.value, showPandocConvert.value))
 
@@ -256,8 +269,21 @@ const pandocStatus = computed<string>(() => {
 
 const pandocDisabled = computed<boolean>(() => pandocSwitch.value.disabled)
 
+/** This pane is the only place the app reports detection, so the answer has to be refreshable. */
+const probePandoc = async (): Promise<void> => {
+  isProbing.value = true
+  try {
+    pandocProbe.value = await window.electron.ipcRenderer.invoke('mt::pandoc::command')
+  } catch {
+    // Main answers `{ command: null }` when its own lookup fails; a broken channel reads the same.
+    pandocProbe.value = { command: null }
+  } finally {
+    isProbing.value = false
+  }
+}
+
 onMounted(async () => {
-  pandocProbe.value = await window.electron.ipcRenderer.invoke('mt::pandoc::command')
+  await probePandoc()
 })
 
 const startUpAction = computed<string>({
@@ -305,5 +331,11 @@ const selectDefaultDirectoryToOpen = (): void => {
 
 .pref-general .startup-action-ctrl label {
   margin: 5px 0;
+}
+
+/* The note line is italic; this button inside it is not. */
+.pref-general .pandoc-recheck {
+  margin-left: 8px;
+  font-style: normal;
 }
 </style>

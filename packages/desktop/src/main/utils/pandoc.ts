@@ -1,13 +1,15 @@
 // Copy from https://github.com/utatti/simple-pandoc/blob/master/index.js
 import { spawn } from 'child_process'
+import { accessSync, constants } from 'fs'
 import path from 'path'
 import type { Readable } from 'stream'
 import commandExists from 'command-exists'
 import { isFile2 } from 'common/filesystem'
+import type { PandocCommandInfo } from '@shared/types/pandoc'
 
 const pandocCommand = 'pandoc'
 
-/** Targets offered by "Export → Convert with Pandoc"; `label` is not translated. */
+/** Targets offered by "File → Convert with Pandoc"; `label` is not translated. */
 export interface PandocExportFormat {
   id: string
   label: string
@@ -78,32 +80,67 @@ export const pandocLocations = (platform: NodeJS.Platform, env: NodeJS.ProcessEn
 }
 
 /** Node refuses to spawn a `.bat`/`.cmd` without `shell: true` (CVE-2024-27980). */
-const isBatchFile = (command: string): boolean =>
-  process.platform === 'win32' && /\.(bat|cmd)$/i.test(command.trim())
+const isBatchFile = (filepath: string, platform: NodeJS.Platform): boolean =>
+  platform === 'win32' && /\.(bat|cmd)$/i.test(filepath.trim())
 
-const getCommand = (): string => {
-  const fromEnv = process.env.MARKTEXT_PANDOC
-  if (fromEnv && isFile2(fromEnv) && !isBatchFile(fromEnv)) return fromEnv
-  return (
-    pandocLocations(process.platform, process.env).find((candidate) => isFile2(candidate)) ??
-    pandocCommand
-  )
+/** A `PATH` hit counts only if `spawn` could run it; on Windows `X_OK` is a plain existence check. */
+const isRunnable = (filepath: string): boolean => {
+  if (!isFile2(filepath)) return false
+  try {
+    accessSync(filepath, constants.X_OK)
+    return true
+  } catch {
+    return false
+  }
 }
 
-/** Which pandoc would run; `exists()` can only answer yes or no. */
-export interface PandocCommandInfo {
-  command: string | null
-  /** True when `command` is the bare name resolved through `PATH`, not a file. */
-  onPath: boolean
+// The file `PATH` would run for `command`, or `null` when it holds none. `command-exists`
+// answers this with a boolean and discards the path — the one thing the pane has to name (#2751).
+export const findOnPath = (
+  command: string,
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env
+): string | null => {
+  const separator = platform === 'win32' ? ';' : ':'
+  // Windows runs a bare name by extension, so the `PATHEXT` spellings are what make it one.
+  const suffixes =
+    platform === 'win32'
+      ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
+      : ['']
+  for (const folder of (env.PATH ?? '').split(separator)) {
+    if (!folder) continue
+    for (const suffix of suffixes) {
+      const candidate = path.join(folder, `${command}${suffix}`)
+      if (!isBatchFile(candidate, platform) && isRunnable(candidate)) return candidate
+    }
+  }
+  return null
 }
 
-export const resolvePandocCommand = (): PandocCommandInfo => {
-  const command = getCommand()
-  if (command !== pandocCommand) return { command, onPath: false }
-  return commandExists.sync(pandocCommand)
-    ? { command: pandocCommand, onPath: true }
-    : { command: null, onPath: false }
+/** The file this machine would run for pandoc, or `null` when none can be named. */
+const locatePandoc = (
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env
+): string | null => {
+  const fromEnv = env.MARKTEXT_PANDOC
+  if (fromEnv && isFile2(fromEnv) && !isBatchFile(fromEnv, platform)) return fromEnv
+  const installed = pandocLocations(platform, env).find((candidate) => isFile2(candidate))
+  return installed ?? findOnPath(pandocCommand, platform, env)
 }
+
+/** What the preference pane reports; `exists()` can only answer yes or no. */
+export const resolvePandocCommand = (
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env
+): PandocCommandInfo => {
+  const command = locatePandoc(platform, env)
+  if (command) return { command }
+  // A shell also runs the batch shims this lookup skips, so ask before calling pandoc missing.
+  return commandExists.sync(pandocCommand) ? { command: null, found: true } : { command: null }
+}
+
+// Spawning needs no shell fallback: a batch shim could not be spawned either way.
+const getCommand = (): string => locatePandoc() ?? pandocCommand
 
 interface PandocConverter {
   (): Promise<string>

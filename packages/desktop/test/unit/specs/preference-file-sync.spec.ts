@@ -13,6 +13,7 @@ const SCHEMA_PATH = path.join(__dirname, '../../../src/main/preferences/schema.j
 
 interface SchemaEntry {
   type?: string
+  default?: unknown
 }
 
 const schema = JSON.parse(fs.readFileSync(SCHEMA_PATH, 'utf8')) as Record<string, SchemaEntry>
@@ -38,5 +39,37 @@ describe('static/preference.json stays in sync with the preference schema', () =
       )
       .map(([key, entry]) => `${key}: expected ${entry.type}, got ${typeOf(defaults[key])}`)
     expect(mismatched).toEqual([])
+  })
+
+  // The schema default is what a pruned key comes back as, and what PREFERENCES.md publishes;
+  // the file holds what the first start writes. Nothing at runtime compares the two.
+  it('gives every schema key the value the schema calls its default', () => {
+    // Compared as JSON: a list or object default has to match by content, not by identity.
+    const diverged = Object.entries(schema)
+      .filter(
+        ([key, entry]) =>
+          key in defaults &&
+          'default' in entry &&
+          JSON.stringify(defaults[key]) !== JSON.stringify(entry.default)
+      )
+      .map(
+        ([key, entry]) =>
+          `${key}: schema says ${JSON.stringify(entry.default)}, the file says ${JSON.stringify(
+            defaults[key]
+          )}`
+      )
+    expect(diverged).toEqual([])
+  })
+
+  // The mirror image: a key the file carries but the schema never declares is written and read
+  // with no type validation and no default to fall back on.
+  it('carries no key that the schema does not declare', () => {
+    const undeclared = Object.keys(defaults).filter((key) => !(key in schema))
+    expect(
+      undeclared,
+      `declare these in schema.json or drop them from static/preference.json: ${undeclared.join(
+        ', '
+      )}`
+    ).toEqual([])
   })
 })

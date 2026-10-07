@@ -1,8 +1,4 @@
-/** What main reported about the binary an export would spawn; `null` until it answers. */
-export interface PandocProbe {
-  command: string | null
-  onPath: boolean
-}
+import type { PandocCommandInfo } from '@shared/types/pandoc'
 
 export interface PandocSwitch {
   /** i18n key of the note beside the switch, empty while detection has not answered. */
@@ -16,16 +12,17 @@ export interface PandocSwitch {
  * A machine without pandoc gets the switch greyed out, unless it is already on — that
  * switch is the only way back out once the binary goes away.
  */
-export const pandocSwitchState = (probe: PandocProbe | null, switchOn: boolean): PandocSwitch => {
+export const pandocSwitchState = (
+  probe: PandocCommandInfo | null,
+  switchOn: boolean
+): PandocSwitch => {
   // `null` means detection has not answered: claim nothing and grey nothing.
   if (!probe) return { note: '', path: '', disabled: false }
-  if (probe.onPath) {
-    return { note: 'preferences.general.pandoc.foundOnPath', path: '', disabled: false }
-  }
   const path = probe.command ?? ''
-  return {
-    note: path ? 'preferences.general.pandoc.found' : 'preferences.general.pandoc.notFound',
-    path,
-    disabled: !path && !switchOn
+  if (path) return { note: 'preferences.general.pandoc.found', path, disabled: false }
+  // A pandoc no file can be named for is still a pandoc, so it is not "not found".
+  if (probe.found) {
+    return { note: 'preferences.general.pandoc.foundNoPath', path: '', disabled: false }
   }
+  return { note: 'preferences.general.pandoc.notFound', path: '', disabled: !switchOn }
 }

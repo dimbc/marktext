@@ -481,10 +481,12 @@
       },
       "pandoc": {
         "title": "Pandoc 変換",
-        "description": "Pandoc 変換メニューを表示します。Pandoc がインストールされている必要があります。",
+        "description": "Pandoc 変換メニューを表示",
+        "detailedDescription": "Pandoc がインストールされている必要があります",
         "found": "検出: {path}",
-        "foundOnPath": "PATH 上で検出",
-        "notFound": "見つかりません"
+        "foundNoPath": "検出しましたが、ファイルを特定できません",
+        "notFound": "見つかりません",
+        "recheck": "再検出"
       },
       "sidebar": {
         "title": "サイドバー",

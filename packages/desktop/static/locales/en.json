@@ -481,10 +481,12 @@
       },
       "pandoc": {
         "title": "Pandoc Conversion",
-        "description": "Show the Pandoc conversion menu. Requires Pandoc to be installed.",
+        "description": "Show the Pandoc conversion menu",
+        "detailedDescription": "Requires Pandoc to be installed",
         "found": "Found: {path}",
-        "foundOnPath": "Found on PATH",
-        "notFound": "Not found"
+        "foundNoPath": "Found, but no file to name",
+        "notFound": "Not found",
+        "recheck": "Re-check"
       },
       "sidebar": {
         "title": "Sidebar",

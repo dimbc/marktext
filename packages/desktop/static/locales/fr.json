@@ -481,10 +481,12 @@
       },
       "pandoc": {
         "title": "Conversion Pandoc",
-        "description": "Afficher le menu de conversion Pandoc. Nécessite l'installation de Pandoc.",
+        "description": "Afficher le menu de conversion Pandoc",
+        "detailedDescription": "Nécessite l'installation de Pandoc",
         "found": "Trouvé : {path}",
-        "foundOnPath": "Trouvé dans le PATH",
-        "notFound": "Introuvable"
+        "foundNoPath": "Trouvé, mais aucun fichier à nommer",
+        "notFound": "Introuvable",
+        "recheck": "Revérifier"
       },
       "sidebar": {
         "title": "Barre latérale",

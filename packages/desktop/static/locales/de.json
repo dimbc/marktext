@@ -481,10 +481,12 @@
       },
       "pandoc": {
         "title": "Pandoc-Konvertierung",
-        "description": "Pandoc-Konvertierungsmenü anzeigen. Erfordert eine Pandoc-Installation.",
+        "description": "Pandoc-Konvertierungsmenü anzeigen",
+        "detailedDescription": "Erfordert eine Pandoc-Installation",
         "found": "Gefunden: {path}",
-        "foundOnPath": "Im PATH gefunden",
-        "notFound": "Nicht gefunden"
+        "foundNoPath": "Gefunden, aber keine Datei zu benennen",
+        "notFound": "Nicht gefunden",
+        "recheck": "Erneut prüfen"
       },
       "sidebar": {
         "title": "Seitenleiste",

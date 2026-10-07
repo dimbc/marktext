@@ -481,10 +481,12 @@
       },
       "pandoc": {
         "title": "Pandoc-conversie",
-        "description": "Het Pandoc-conversiemenu tonen. Vereist een installatie van Pandoc.",
+        "description": "Het Pandoc-conversiemenu tonen",
+        "detailedDescription": "Vereist een installatie van Pandoc",
         "found": "Gevonden: {path}",
-        "foundOnPath": "Gevonden in PATH",
-        "notFound": "Niet gevonden"
+        "foundNoPath": "Gevonden, maar geen bestand om te noemen",
+        "notFound": "Niet gevonden",
+        "recheck": "Opnieuw controleren"
       },
       "sidebar": {
         "title": "Zijbalk",

@@ -481,10 +481,12 @@
       },
       "pandoc": {
         "title": "Pandoc Dönüştürme",
-        "description": "Pandoc dönüştürme menüsünü gösterir. Pandoc kurulu olmalıdır.",
+        "description": "Pandoc dönüştürme menüsünü göster",
+        "detailedDescription": "Pandoc kurulu olmalıdır",
         "found": "Bulundu: {path}",
-        "foundOnPath": "PATH üzerinde bulundu",
-        "notFound": "Bulunamadı"
+        "foundNoPath": "Bulundu, ancak dosya belirtilemiyor",
+        "notFound": "Bulunamadı",
+        "recheck": "Yeniden Denetle"
       },
       "sidebar": {
         "title": "Kenar Çubuğu",

@@ -481,10 +481,12 @@
       },
       "pandoc": {
         "title": "Pandoc 轉換",
-        "description": "顯示 Pandoc 轉換選單。需要先安裝 Pandoc。",
+        "description": "顯示 Pandoc 轉換選單",
+        "detailedDescription": "需要先安裝 Pandoc",
         "found": "已找到：{path}",
-        "foundOnPath": "已在 PATH 中找到",
-        "notFound": "未找到"
+        "foundNoPath": "已找到，但無法確定檔案",
+        "notFound": "未找到",
+        "recheck": "重新檢測"
       },
       "sidebar": {
         "title": "側邊欄",

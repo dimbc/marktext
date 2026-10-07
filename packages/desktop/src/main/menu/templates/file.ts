@@ -12,10 +12,7 @@ export default function(
   userPreference: Preference,
   recentlyUsedFiles: string[]
 ): MenuItemConstructorOptions {
-  const { autoSave, showPandocConvert } = userPreference.getAll() as {
-    autoSave?: boolean
-    showPandocConvert?: boolean
-  }
+  const { autoSave, showPandocConvert } = userPreference.getAll()
   const submenu: MenuItemConstructorOptions[] = [
     {
       label: t('menu.file.newTab'),

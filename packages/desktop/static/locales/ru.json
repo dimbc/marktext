@@ -481,10 +481,12 @@
       },
       "pandoc": {
         "title": "Конвертация Pandoc",
-        "description": "Показывать меню конвертации Pandoc. Требуется установленный Pandoc.",
+        "description": "Показывать меню конвертации Pandoc",
+        "detailedDescription": "Требуется установленный Pandoc",
         "found": "Найден: {path}",
-        "foundOnPath": "Найден в PATH",
-        "notFound": "Не найден"
+        "foundNoPath": "Найден, но файл указать нельзя",
+        "notFound": "Не найден",
+        "recheck": "Проверить снова"
       },
       "sidebar": {
         "title": "Боковая панель",

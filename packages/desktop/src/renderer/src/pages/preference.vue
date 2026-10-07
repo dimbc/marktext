@@ -101,6 +101,9 @@ onMounted(() => {
     font-style: italic;
     font-size: 12px;
     color: var(--editorColor80);
+    /* A Windows path is one unbreakable token — no space, no break at a backslash — so
+       without this it widens `.pref-content` and adds a scrollbar to the settings window. */
+    overflow-wrap: anywhere;
   }
 
   & .pref-content {
